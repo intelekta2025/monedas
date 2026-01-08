@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
+import SettingsView from './components/SettingsView';
+import { getWhatsappPhones } from './services/whatsappService';
 import {
   MessageCircle,
   Trash2,
@@ -34,7 +36,8 @@ import {
   Lock,
   ArrowRight,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Phone
 } from 'lucide-react';
 
 // --- COMPONENTE DE LOGIN ---
@@ -165,12 +168,38 @@ const App = () => {
   const [feedback, setFeedback] = useState(null);
 
   const [simulatedDevice, setSimulatedDevice] = useState('desktop');
+  const [currentView, setCurrentView] = useState('main'); // 'main' | 'settings'
   const chatContainerRef = useRef(null);
+
+  // Estado para teléfonos WhatsApp
+  const [whatsappPhones, setWhatsappPhones] = useState([]);
+  const [selectedPhone, setSelectedPhone] = useState(null);
+  const [phonesLoading, setPhonesLoading] = useState(true);
 
   // Helper para fechas
   const getTodayDate = () => new Date().toISOString().split('T')[0];
   const todayStr = '24/10';
   const yesterdayStr = '23/10';
+
+  // Cargar teléfonos WhatsApp al autenticarse
+  useEffect(() => {
+    const loadPhones = async () => {
+      if (!isAuthenticated) return;
+      setPhonesLoading(true);
+      try {
+        const phones = await getWhatsappPhones();
+        setWhatsappPhones(phones || []);
+        // Seleccionar el default o el primero
+        const defaultPhone = phones?.find(p => p.is_default) || phones?.[0];
+        if (defaultPhone) setSelectedPhone(defaultPhone);
+      } catch (err) {
+        console.error('Error cargando teléfonos:', err);
+      } finally {
+        setPhonesLoading(false);
+      }
+    };
+    loadPhones();
+  }, [isAuthenticated]);
 
   const chats = [
     {
@@ -450,139 +479,168 @@ const App = () => {
                 </div>
               )}
 
+              {/* Selector de Teléfono WhatsApp */}
+              {!isMobileView && whatsappPhones.length > 0 && (
+                <div className={`flex items-center gap-2 ${theme.inputBg} rounded-xl px-3 py-2 border ${theme.cardBorder}`}>
+                  <Phone size={16} className="text-green-500" />
+                  <select
+                    value={selectedPhone?.id || ''}
+                    onChange={(e) => {
+                      const phone = whatsappPhones.find(p => p.id === e.target.value);
+                      setSelectedPhone(phone);
+                    }}
+                    className={`bg-transparent border-none outline-none text-sm font-medium ${theme.text} cursor-pointer pr-2`}
+                  >
+                    {whatsappPhones.map((phone) => (
+                      <option key={phone.id} value={phone.id} className="bg-slate-900 text-white">
+                        {phone.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
                 <button onClick={toggleTheme} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-slate-800 text-emerald-400' : 'hover:bg-gray-100 text-slate-600'}`}>{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
                 {isMobileView && <button className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}><Menu size={20} className={theme.textMuted} /></button>}
                 {!isMobileView && (
                   <>
                     <button className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><LayoutGrid size={16} /> <span className="hidden xl:inline">Dashboard</span></button>
-                    <button className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><Settings size={16} /></button>
+                    <button onClick={() => setCurrentView('settings')} className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><Settings size={16} /></button>
                     <div className={`w-9 h-9 rounded-full ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-200 border-gray-300'} flex items-center justify-center border cursor-pointer`}><User size={18} className={theme.textMuted} /></div>
                   </>
                 )}
               </div>
             </header>
 
-            <main className={`flex-1 flex overflow-hidden ${isMobileView ? 'p-0' : 'p-4 lg:p-6 lg:gap-6'} relative`}>
+            {/* Conditional View Rendering */}
+            {currentView === 'settings' ? (
+              <SettingsView
+                onBack={() => setCurrentView('main')}
+                isDarkMode={isDarkMode}
+              />
+            ) : (
+              <main className={`flex-1 flex overflow-hidden ${isMobileView ? 'p-0' : 'p-4 lg:p-6 lg:gap-6'} relative`}>
 
-              {/* COLUMNA 1: LISTA */}
-              <div className={`
+                {/* COLUMNA 1: LISTA */}
+                <div className={`
                 ${isMobileView && selectedChat ? 'hidden' : 'flex'} 
                 ${isMobileView ? 'w-full' : 'w-80'} flex-shrink-0 flex-col 
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} transition-colors duration-300
               `}>
-                <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
-                  <h2 className={`font-bold text-sm ${theme.text} flex items-center gap-2`}><MessageCircle size={18} className={theme.accent} /> Mensajes</h2>
-                  <div className="flex items-center gap-2">
-                    <button onClick={cycleDateFilter} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${dateFilter !== 'any' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : `${theme.textMuted} hover:bg-slate-800/50`}`}><Calendar size={12} /><span className={`${isMobileView ? 'hidden' : 'hidden sm:inline'}`}>{dateFilter === 'today' ? 'Hoy' : dateFilter === 'week' ? '7 Días' : 'Fecha'}</span></button>
-                    <div className={`text-[10px] font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-gray-100 text-gray-500'}`}>{filteredChats.length}</div>
+                  <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
+                    <h2 className={`font-bold text-sm ${theme.text} flex items-center gap-2`}><MessageCircle size={18} className={theme.accent} /> Mensajes</h2>
+                    <div className="flex items-center gap-2">
+                      <button onClick={cycleDateFilter} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${dateFilter !== 'any' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : `${theme.textMuted} hover:bg-slate-800/50`}`}><Calendar size={12} /><span className={`${isMobileView ? 'hidden' : 'hidden sm:inline'}`}>{dateFilter === 'today' ? 'Hoy' : dateFilter === 'week' ? '7 Días' : 'Fecha'}</span></button>
+                      <div className={`text-[10px] font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-gray-100 text-gray-500'}`}>{filteredChats.length}</div>
+                    </div>
                   </div>
-                </div>
-                <div className="p-3">
-                  <div className={`flex justify-between items-center p-1.5 rounded-xl ${isDarkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
-                    <FilterIconButton active={activeTab === 'todos'} onClick={() => setActiveTab('todos')} icon={<Inbox size={16} />} title="Todos" isDark={isDarkMode} />
-                    <div className="w-px h-4 bg-gray-500/20 mx-1"></div>
-                    <FilterIconButton active={activeTab === 'oportunidades'} onClick={() => setActiveTab('oportunidades')} icon={<Star size={16} />} title="Oportunidades" color="text-emerald-500" isDark={isDarkMode} />
-                    <FilterIconButton active={activeTab === 'consultas'} onClick={() => setActiveTab('consultas')} icon={<ShoppingBag size={16} />} title="Intención" color="text-blue-500" isDark={isDarkMode} />
-                    <FilterIconButton active={activeTab === 'basura'} onClick={() => setActiveTab('basura')} icon={<Trash2 size={16} />} title="Papelera" color="text-gray-500" isDark={isDarkMode} />
+                  <div className="p-3">
+                    <div className={`flex justify-between items-center p-1.5 rounded-xl ${isDarkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
+                      <FilterIconButton active={activeTab === 'todos'} onClick={() => setActiveTab('todos')} icon={<Inbox size={16} />} title="Todos" isDark={isDarkMode} />
+                      <div className="w-px h-4 bg-gray-500/20 mx-1"></div>
+                      <FilterIconButton active={activeTab === 'oportunidades'} onClick={() => setActiveTab('oportunidades')} icon={<Star size={16} />} title="Oportunidades" color="text-emerald-500" isDark={isDarkMode} />
+                      <FilterIconButton active={activeTab === 'consultas'} onClick={() => setActiveTab('consultas')} icon={<ShoppingBag size={16} />} title="Intención" color="text-blue-500" isDark={isDarkMode} />
+                      <FilterIconButton active={activeTab === 'basura'} onClick={() => setActiveTab('basura')} icon={<Trash2 size={16} />} title="Papelera" color="text-gray-500" isDark={isDarkMode} />
+                    </div>
                   </div>
-                </div>
-                <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 custom-scrollbar">
-                  {filteredChats.map((chat) => (
-                    <div key={chat.id} onClick={() => handleChatSelect(chat)} className={`p-3 rounded-xl cursor-pointer transition-all border group relative ${selectedChat?.id === chat.id && !isMobileView ? `${isDarkMode ? 'bg-slate-800 border-emerald-500/40' : 'bg-emerald-50 border-emerald-200'} shadow-md` : `${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'} border-transparent`}`}>
-                      <div className="flex gap-3">
-                        <div className="relative">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm border shadow-sm ${isDarkMode ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-gray-100 text-gray-600'}`}>{chat.avatar}</div>
-                          <div className={`absolute -top-1 -right-1 p-1 rounded-full border ${isDarkMode ? 'border-slate-900' : 'border-white'} shadow-sm ${chat.type === 'Oportunidad' ? 'bg-emerald-500 text-white' : chat.type === 'Consulta' ? 'bg-blue-500 text-white' : 'bg-gray-400 text-white'}`}>
-                            {chat.type === 'Oportunidad' ? <Star size={10} fill="currentColor" /> : chat.type === 'Consulta' ? <ShoppingBag size={10} /> : <Trash2 size={10} />}
+                  <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 custom-scrollbar">
+                    {filteredChats.map((chat) => (
+                      <div key={chat.id} onClick={() => handleChatSelect(chat)} className={`p-3 rounded-xl cursor-pointer transition-all border group relative ${selectedChat?.id === chat.id && !isMobileView ? `${isDarkMode ? 'bg-slate-800 border-emerald-500/40' : 'bg-emerald-50 border-emerald-200'} shadow-md` : `${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'} border-transparent`}`}>
+                        <div className="flex gap-3">
+                          <div className="relative">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm border shadow-sm ${isDarkMode ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-gray-100 text-gray-600'}`}>{chat.avatar}</div>
+                            <div className={`absolute -top-1 -right-1 p-1 rounded-full border ${isDarkMode ? 'border-slate-900' : 'border-white'} shadow-sm ${chat.type === 'Oportunidad' ? 'bg-emerald-500 text-white' : chat.type === 'Consulta' ? 'bg-blue-500 text-white' : 'bg-gray-400 text-white'}`}>
+                              {chat.type === 'Oportunidad' ? <Star size={10} fill="currentColor" /> : chat.type === 'Consulta' ? <ShoppingBag size={10} /> : <Trash2 size={10} />}
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-center mb-0.5">
-                            <span className={`text-sm font-bold truncate ${selectedChat?.id === chat.id && !isMobileView ? theme.text : theme.textMuted}`}>{chat.name}</span>
-                            <span className="text-[10px] opacity-60 flex items-center gap-1">{chat.date === getTodayDate() && <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>}{chat.time.split(' ')[1]} {chat.time.split(' ')[2]}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-center mb-0.5">
+                              <span className={`text-sm font-bold truncate ${selectedChat?.id === chat.id && !isMobileView ? theme.text : theme.textMuted}`}>{chat.name}</span>
+                              <span className="text-[10px] opacity-60 flex items-center gap-1">{chat.date === getTodayDate() && <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>}{chat.time.split(' ')[1]} {chat.time.split(' ')[2]}</span>
+                            </div>
+                            <p className={`text-xs truncate ${theme.textMuted}`}>{chat.lastMsg}</p>
                           </div>
-                          <p className={`text-xs truncate ${theme.textMuted}`}>{chat.lastMsg}</p>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* COLUMNA 2: CHAT */}
-              <div className={`
+                {/* COLUMNA 2: CHAT */}
+                <div className={`
                 ${isMobileView ? (selectedChat && !showMobileInfo ? 'flex' : 'hidden') : 'flex'} 
                 flex-1 flex-col 
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} overflow-hidden relative transition-colors duration-300 z-10
               `}>
-                {selectedChat ? (
-                  <>
-                    <div className={`p-3 lg:p-4 border-b ${theme.cardBorder} flex items-center justify-between z-10 shadow-sm ${theme.headerBg}`}>
-                      <div className="flex items-center gap-2 lg:gap-3">
-                        {isMobileView && <button onClick={handleBackToList} className="p-2 -ml-2 rounded-full hover:bg-slate-800 text-slate-400"><ArrowLeft size={20} /></button>}
-                        <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center text-xs lg:text-sm font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>{selectedChat.avatar}</div>
-                        <div><h3 className={`font-bold text-sm ${theme.text}`}>{selectedChat.name}</h3><p className={`text-[10px] ${theme.textMuted} flex items-center gap-1`}><span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Business</p></div>
+                  {selectedChat ? (
+                    <>
+                      <div className={`p-3 lg:p-4 border-b ${theme.cardBorder} flex items-center justify-between z-10 shadow-sm ${theme.headerBg}`}>
+                        <div className="flex items-center gap-2 lg:gap-3">
+                          {isMobileView && <button onClick={handleBackToList} className="p-2 -ml-2 rounded-full hover:bg-slate-800 text-slate-400"><ArrowLeft size={20} /></button>}
+                          <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center text-xs lg:text-sm font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>{selectedChat.avatar}</div>
+                          <div><h3 className={`font-bold text-sm ${theme.text}`}>{selectedChat.name}</h3><p className={`text-[10px] ${theme.textMuted} flex items-center gap-1`}><span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Business</p></div>
+                        </div>
+                        <div className="flex gap-1">
+                          {isMobileView && <button onClick={() => setShowMobileInfo(true)} className={`p-2 rounded-lg text-emerald-500 hover:bg-emerald-500/10`}><ShieldCheck size={20} /></button>}
+                          <button className={`p-2 rounded-lg hover:bg-opacity-10 transition-colors ${theme.textMuted} hover:bg-slate-500`}><MoreVertical size={18} /></button>
+                        </div>
                       </div>
-                      <div className="flex gap-1">
-                        {isMobileView && <button onClick={() => setShowMobileInfo(true)} className={`p-2 rounded-lg text-emerald-500 hover:bg-emerald-500/10`}><ShieldCheck size={20} /></button>}
-                        <button className={`p-2 rounded-lg hover:bg-opacity-10 transition-colors ${theme.textMuted} hover:bg-slate-500`}><MoreVertical size={18} /></button>
-                      </div>
-                    </div>
 
-                    <div ref={chatContainerRef} className={`flex-1 ${isDarkMode ? 'bg-slate-950/50' : 'bg-gray-50/50'} p-4 lg:p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4`}>
-                      {selectedChat.history ? (
-                        selectedChat.history.map((msg, idx) => (
-                          <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}>
-                            <div className={`max-w-[85%] lg:max-w-[80%] rounded-2xl p-3 lg:p-4 text-sm leading-relaxed relative group transition-all ${msg.sender === 'user' ? theme.chatBubbleUser : theme.chatBubbleBot} ${msg.sender === 'user' ? 'rounded-tl-none' : 'rounded-tr-none'}`}>
-                              {msg.type === 'image' ? <div className="space-y-2"><div className="relative rounded-lg overflow-hidden shadow-md"><img src={msg.img} alt="Evidencia" className="w-full h-auto object-cover max-h-[300px]" /></div>{msg.text && <p className={`text-xs ${theme.textMuted} italic`}>{msg.text}</p>}</div> : <p className={isDarkMode || msg.sender === 'bot' ? theme.text : 'text-gray-700'}>{msg.text}</p>}
-                              <div className={`flex items-center gap-1 mt-1.5 opacity-40 text-[9px] font-bold uppercase ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}>{msg.time.split(' ')[1]} {msg.time.split(' ')[2]}{msg.sender === 'bot' && <CheckCircle size={10} />}</div>
+                      <div ref={chatContainerRef} className={`flex-1 ${isDarkMode ? 'bg-slate-950/50' : 'bg-gray-50/50'} p-4 lg:p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4`}>
+                        {selectedChat.history ? (
+                          selectedChat.history.map((msg, idx) => (
+                            <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}>
+                              <div className={`max-w-[85%] lg:max-w-[80%] rounded-2xl p-3 lg:p-4 text-sm leading-relaxed relative group transition-all ${msg.sender === 'user' ? theme.chatBubbleUser : theme.chatBubbleBot} ${msg.sender === 'user' ? 'rounded-tl-none' : 'rounded-tr-none'}`}>
+                                {msg.type === 'image' ? <div className="space-y-2"><div className="relative rounded-lg overflow-hidden shadow-md"><img src={msg.img} alt="Evidencia" className="w-full h-auto object-cover max-h-[300px]" /></div>{msg.text && <p className={`text-xs ${theme.textMuted} italic`}>{msg.text}</p>}</div> : <p className={isDarkMode || msg.sender === 'bot' ? theme.text : 'text-gray-700'}>{msg.text}</p>}
+                                <div className={`flex items-center gap-1 mt-1.5 opacity-40 text-[9px] font-bold uppercase ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}>{msg.time.split(' ')[1]} {msg.time.split(' ')[2]}{msg.sender === 'bot' && <CheckCircle size={10} />}</div>
+                              </div>
                             </div>
-                          </div>
-                        ))
-                      ) : null}
-                    </div>
+                          ))
+                        ) : null}
+                      </div>
 
-                    {/* EDITOR DE RESPUESTA (Aquí para Móvil) */}
-                    {isMobileView && <ReplyEditor chat={selectedChat} />}
-                  </>
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center opacity-40"><MessageCircle size={64} className="mb-4 text-gray-400" /><p className={`text-sm font-medium ${theme.textMuted}`}>Selecciona una conversación</p></div>
-                )}
-              </div>
+                      {/* EDITOR DE RESPUESTA (Aquí para Móvil) */}
+                      {isMobileView && <ReplyEditor chat={selectedChat} />}
+                    </>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center opacity-40"><MessageCircle size={64} className="mb-4 text-gray-400" /><p className={`text-sm font-medium ${theme.textMuted}`}>Selecciona una conversación</p></div>
+                  )}
+                </div>
 
-              {/* COLUMNA 3: IA */}
-              <div className={`
+                {/* COLUMNA 3: IA */}
+                <div className={`
                 ${isMobileView ? (showMobileInfo ? 'flex absolute inset-0 z-50' : 'hidden') : 'flex'} 
                 ${isMobileView ? 'w-full h-full' : 'w-96 flex-shrink-0'} flex-col 
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} transition-colors duration-300 overflow-hidden
               `}>
-                {isMobileView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-500">Análisis IA</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
-                {!isMobileView && <div className={`p-4 border-b ${theme.cardBorder} ${isDarkMode ? 'bg-emerald-900/10' : 'bg-emerald-50'} flex items-center gap-2 flex-shrink-0`}><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-600 uppercase tracking-wider">{selectedChat?.aiAnalysis.category === 'inquiry' ? 'Intención' : 'Análisis'}</h2></div>}
+                  {isMobileView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-500">Análisis IA</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
+                  {!isMobileView && <div className={`p-4 border-b ${theme.cardBorder} ${isDarkMode ? 'bg-emerald-900/10' : 'bg-emerald-50'} flex items-center gap-2 flex-shrink-0`}><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-600 uppercase tracking-wider">{selectedChat?.aiAnalysis.category === 'inquiry' ? 'Intención' : 'Análisis'}</h2></div>}
 
-                {selectedChat ? (
-                  <>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-0">
-                      <div className={`rounded-xl p-5 mb-5 relative overflow-hidden border shadow-sm ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-100'}`}>
-                        <div className={`absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8 rotate-45 opacity-10 ${['Oportunidad', 'Consulta'].includes(selectedChat.type) ? (selectedChat.type === 'Consulta' ? 'bg-blue-500' : 'bg-emerald-500') : 'bg-gray-500'}`}></div>
-                        {selectedChat.aiAnalysis.category === 'inquiry' ? (
-                          <div className="relative z-10"><p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Cliente busca:</p><h3 className={`text-xl font-serif font-bold leading-tight mb-4 flex items-center gap-2 ${theme.text}`}><ShoppingBag size={20} className="text-blue-500" /> {selectedChat.aiAnalysis.intent}</h3><div className="space-y-4"><div><p className={`text-[10px] uppercase font-bold mb-1 ${theme.textMuted}`}>Keywords Detectadas</p><div className="flex flex-wrap gap-1.5">{selectedChat.aiAnalysis.keywords.map((k, i) => (<span key={i} className={`px-2 py-1 rounded-md text-[10px] font-medium border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>{k}</span>))}</div></div></div></div>
-                        ) : (
-                          <div className="relative z-10"><p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Identificación IA</p>{analysisImage && (<div className={`mb-4 group relative rounded-lg overflow-hidden border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-100'} shadow-sm w-full h-32`}><img src={analysisImage} alt="Pieza analizada" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]"><a href={analysisImage} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors border border-white/20"><Eye size={16} /></a></div></div>)}<h3 className={`text-lg font-serif font-bold leading-tight mb-4 ${theme.text}`}>{selectedChat.aiAnalysis.item}</h3>{analysisImage && (<a href={analysisImage} target="_blank" rel="noopener noreferrer" className={`text-[10px] flex items-center gap-1 hover:underline mb-2 opacity-60 hover:opacity-100 transition-opacity ${theme.accent}`}><ExternalLink size={10} /> Ver imagen original</a>)}</div>
-                        )}
-                        <div className={`pt-4 mt-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex items-center justify-between`}><div><p className={`text-[10px] uppercase font-bold mb-1 ${theme.textMuted}`}>Veredicto IA</p><div className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${selectedChat.type === 'Basura' ? 'bg-gray-400' : (selectedChat.type === 'Consulta' ? 'bg-blue-500' : 'bg-emerald-500')}`}></span><p className={`text-sm font-bold ${selectedChat.type === 'Basura' ? 'text-gray-400' : (selectedChat.type === 'Consulta' ? 'text-blue-500' : 'text-emerald-500')}`}>{selectedChat.aiAnalysis.verdict}</p></div></div><div className="flex flex-col items-end gap-1"><p className={`text-[9px] uppercase font-bold ${theme.textMuted}`}>¿Correcto?</p><div className="flex gap-1"><button onClick={() => setFeedback('up')} className={`p-1.5 rounded transition-colors ${feedback === 'up' ? 'text-green-500 bg-green-500/10' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button><button onClick={() => setFeedback('down')} className={`p-1.5 rounded transition-colors ${feedback === 'down' ? 'text-red-500 bg-red-500/10' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button></div></div></div>
+                  {selectedChat ? (
+                    <>
+                      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-0">
+                        <div className={`rounded-xl p-5 mb-5 relative overflow-hidden border shadow-sm ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-100'}`}>
+                          <div className={`absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8 rotate-45 opacity-10 ${['Oportunidad', 'Consulta'].includes(selectedChat.type) ? (selectedChat.type === 'Consulta' ? 'bg-blue-500' : 'bg-emerald-500') : 'bg-gray-500'}`}></div>
+                          {selectedChat.aiAnalysis.category === 'inquiry' ? (
+                            <div className="relative z-10"><p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Cliente busca:</p><h3 className={`text-xl font-serif font-bold leading-tight mb-4 flex items-center gap-2 ${theme.text}`}><ShoppingBag size={20} className="text-blue-500" /> {selectedChat.aiAnalysis.intent}</h3><div className="space-y-4"><div><p className={`text-[10px] uppercase font-bold mb-1 ${theme.textMuted}`}>Keywords Detectadas</p><div className="flex flex-wrap gap-1.5">{selectedChat.aiAnalysis.keywords.map((k, i) => (<span key={i} className={`px-2 py-1 rounded-md text-[10px] font-medium border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>{k}</span>))}</div></div></div></div>
+                          ) : (
+                            <div className="relative z-10"><p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Identificación IA</p>{analysisImage && (<div className={`mb-4 group relative rounded-lg overflow-hidden border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-100'} shadow-sm w-full h-32`}><img src={analysisImage} alt="Pieza analizada" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]"><a href={analysisImage} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors border border-white/20"><Eye size={16} /></a></div></div>)}<h3 className={`text-lg font-serif font-bold leading-tight mb-4 ${theme.text}`}>{selectedChat.aiAnalysis.item}</h3>{analysisImage && (<a href={analysisImage} target="_blank" rel="noopener noreferrer" className={`text-[10px] flex items-center gap-1 hover:underline mb-2 opacity-60 hover:opacity-100 transition-opacity ${theme.accent}`}><ExternalLink size={10} /> Ver imagen original</a>)}</div>
+                          )}
+                          <div className={`pt-4 mt-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex items-center justify-between`}><div><p className={`text-[10px] uppercase font-bold mb-1 ${theme.textMuted}`}>Veredicto IA</p><div className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${selectedChat.type === 'Basura' ? 'bg-gray-400' : (selectedChat.type === 'Consulta' ? 'bg-blue-500' : 'bg-emerald-500')}`}></span><p className={`text-sm font-bold ${selectedChat.type === 'Basura' ? 'text-gray-400' : (selectedChat.type === 'Consulta' ? 'text-blue-500' : 'text-emerald-500')}`}>{selectedChat.aiAnalysis.verdict}</p></div></div><div className="flex flex-col items-end gap-1"><p className={`text-[9px] uppercase font-bold ${theme.textMuted}`}>¿Correcto?</p><div className="flex gap-1"><button onClick={() => setFeedback('up')} className={`p-1.5 rounded transition-colors ${feedback === 'up' ? 'text-green-500 bg-green-500/10' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button><button onClick={() => setFeedback('down')} className={`p-1.5 rounded transition-colors ${feedback === 'down' ? 'text-red-500 bg-red-500/10' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button></div></div></div>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* EDITOR DE RESPUESTA (Aquí para Desktop) */}
-                    {!isMobileView && <ReplyEditor chat={selectedChat} />}
-                  </>
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center opacity-40 p-8 text-center"><ShieldCheck size={48} className="mb-4 text-gray-400" /><p className={`text-xs font-bold uppercase tracking-widest ${theme.textMuted}`}>Esperando análisis...</p></div>
-                )}
-              </div>
+                      {/* EDITOR DE RESPUESTA (Aquí para Desktop) */}
+                      {!isMobileView && <ReplyEditor chat={selectedChat} />}
+                    </>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center opacity-40 p-8 text-center"><ShieldCheck size={48} className="mb-4 text-gray-400" /><p className={`text-xs font-bold uppercase tracking-widest ${theme.textMuted}`}>Esperando análisis...</p></div>
+                  )}
+                </div>
 
-            </main>
+              </main>
+            )}
           </div>
         </div>
       </div>
