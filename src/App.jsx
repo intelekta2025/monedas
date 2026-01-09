@@ -879,7 +879,11 @@ const App = () => {
                             const msgTime = new Date(msg.created_at).toLocaleString('es-MX', {
                               hour: '2-digit', minute: '2-digit', hour12: true
                             });
-                            const hasImage = msg.num_media > 0 && msg.media?.[0]?.media_url;
+                            const hasImage = msg.num_media > 0 && msg.media?.length > 0 && msg.media[0]?.media_url;
+                            // Debug: log para ver datos de media
+                            if (msg.num_media > 0) {
+                              console.log('Mensaje con media:', { id: msg.id, num_media: msg.num_media, media: msg.media });
+                            }
                             return (
                               <div key={msg.id || idx} className={`flex ${sender === 'user' ? 'justify-start' : 'justify-end'}`}>
                                 <div className={`max-w-[85%] lg:max-w-[80%] rounded-2xl p-3 lg:p-4 text-sm leading-relaxed relative group transition-all ${sender === 'user' ? theme.chatBubbleUser : theme.chatBubbleBot} ${sender === 'user' ? 'rounded-tl-none' : 'rounded-tr-none'}`}>
@@ -889,6 +893,15 @@ const App = () => {
                                         <img src={msg.media[0].media_url} alt="Evidencia" className="w-full h-auto object-cover max-h-[300px]" />
                                       </div>
                                       {msg.body && <p className={`text-xs ${theme.textMuted} italic`}>{msg.body}</p>}
+                                    </div>
+                                  ) : msg.num_media > 0 ? (
+                                    // Fallback: tiene media pero no se pudo cargar
+                                    <div className="space-y-2">
+                                      <div className={`flex items-center gap-2 p-3 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-gray-100'}`}>
+                                        <ImageIcon size={20} className="text-blue-500" />
+                                        <span className={`text-sm ${theme.text}`}>📎 Imagen adjunta ({msg.num_media})</span>
+                                      </div>
+                                      {msg.body && <p className={theme.text}>{msg.body}</p>}
                                     </div>
                                   ) : (
                                     <p className={isDarkMode || sender === 'bot' ? theme.text : 'text-gray-700'}>{msg.body}</p>
