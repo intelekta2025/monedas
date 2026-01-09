@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
 import { getWhatsappPhones } from './services/whatsappService';
+import { getConversations, getMessages, subscribeToConversations, closeConversation, markAsRead } from './services/messagesService';
 import {
   MessageCircle,
   Trash2,
@@ -37,7 +38,8 @@ import {
   ArrowRight,
   Loader2,
   AlertCircle,
-  Phone
+  Phone,
+  XCircle
 } from 'lucide-react';
 
 // --- COMPONENTE DE LOGIN ---
@@ -176,6 +178,12 @@ const App = () => {
   const [selectedPhone, setSelectedPhone] = useState(null);
   const [phonesLoading, setPhonesLoading] = useState(true);
 
+  // Estado para conversaciones reales
+  const [conversations, setConversations] = useState([]);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+
   // Helper para fechas
   const getTodayDate = () => new Date().toISOString().split('T')[0];
   const todayStr = '24/10';
@@ -200,6 +208,61 @@ const App = () => {
     };
     loadPhones();
   }, [isAuthenticated]);
+
+  // Cargar conversaciones cuando cambia el teléfono seleccionado
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (!selectedPhone?.id) {
+        setConversations([]);
+        return;
+      }
+      setConversationsLoading(true);
+      try {
+        const convs = await getConversations(selectedPhone.id);
+        setConversations(convs || []);
+        // Seleccionar la primera conversación si hay
+        if (convs?.length > 0 && !selectedConversation) {
+          setSelectedConversation(convs[0]);
+        }
+      } catch (err) {
+        console.error('Error cargando conversaciones:', err);
+      } finally {
+        setConversationsLoading(false);
+      }
+    };
+    loadConversations();
+
+    // Suscribirse a cambios en tiempo real
+    if (selectedPhone?.id) {
+      const unsubscribe = subscribeToConversations(selectedPhone.id, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setConversations(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setConversations(prev =>
+            prev.map(c => c.id === payload.new.id ? payload.new : c)
+          );
+        }
+      });
+      return unsubscribe;
+    }
+  }, [selectedPhone?.id]);
+
+  // Cargar mensajes cuando cambia la conversación seleccionada
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!selectedConversation?.id) {
+        setChatMessages([]);
+        return;
+      }
+      try {
+        const msgs = await getMessages(selectedConversation.id);
+        setChatMessages(msgs || []);
+      } catch (err) {
+        console.error('Error cargando mensajes:', err);
+      }
+    };
+    loadMessages();
+  }, [selectedConversation?.id]);
 
   const chats = [
     {
@@ -324,15 +387,40 @@ const App = () => {
 
   const isMobileView = simulatedDevice === 'mobile';
 
-  const handleChatSelect = (chat) => {
+  const handleChatSelect = async (chat) => {
     setSelectedChat(chat);
     setShowMobileInfo(false);
     setFeedback(null);
+
+    // Si es una conversación real, cargar los mensajes
+    if (chat.conversationId) {
+      setSelectedConversation({ id: chat.conversationId });
+      try {
+        const msgs = await getMessages(chat.conversationId);
+        setChatMessages(msgs || []);
+      } catch (err) {
+        console.error('Error cargando mensajes:', err);
+      }
+    }
   };
 
   const handleBackToList = () => {
     setSelectedChat(null);
     setShowMobileInfo(false);
+  };
+
+  // Cerrar conversación
+  const handleCloseConversation = async (reason = 'resolved') => {
+    if (!selectedChat?.conversationId) return;
+    try {
+      await closeConversation(selectedChat.conversationId, reason, profile?.id);
+      // Refrescar lista de conversaciones
+      const convs = await getConversations(selectedPhone.id);
+      setConversations(convs || []);
+      setSelectedChat(null);
+    } catch (err) {
+      console.error('Error cerrando conversación:', err);
+    }
   };
 
   const theme = {
@@ -348,7 +436,45 @@ const App = () => {
     chatBubbleBot: isDarkMode ? 'bg-emerald-900/20 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200',
   };
 
-  const filteredChats = chats.filter(chat => {
+  // Transformar conversaciones reales al formato del UI
+  const realChatsFormatted = conversations.map(conv => ({
+    id: conv.id,
+    name: conv.client?.full_name || conv.client?.phone_number || 'Sin nombre',
+    lastMsg: conv.last_message || 'Sin mensajes',
+    time: conv.last_message_at
+      ? new Date(conv.last_message_at).toLocaleString('es-MX', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true
+      })
+      : '',
+    date: conv.last_message_at ? conv.last_message_at.split('T')[0] : '',
+    type: 'Oportunidad', // Por ahora todo como oportunidad, la IA lo clasificará después
+    priority: conv.unread_count > 0 ? 'Alta' : 'Media',
+    avatar: (conv.client?.full_name || conv.client?.phone_number || '??').slice(0, 2).toUpperCase(),
+    unreadCount: conv.unread_count || 0,
+    contactNumber: conv.client?.phone_number,
+    conversationId: conv.id,
+    clientId: conv.client?.id,
+    windowExpiresAt: conv.window_expires_at,
+    // Los mensajes se cargan por separado
+    history: chatMessages.filter(m => m.conversation_id === conv.id).map(m => ({
+      sender: m.direction === 'inbound' ? 'user' : 'bot',
+      text: m.body,
+      time: new Date(m.created_at).toLocaleString('es-MX', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true
+      }),
+      type: m.num_media > 0 ? 'image' : 'text',
+      // Usar media array si existe, sino el media_url directo
+      img: m.media?.[0]?.media_url || null,
+      allMedia: m.media || []
+    })),
+    aiAnalysis: null, // Se agregará con la integración de IA
+    suggestedReply: ''
+  }));
+
+  // Usar conversaciones reales si hay, sino demo
+  const displayChats = realChatsFormatted.length > 0 ? realChatsFormatted : chats;
+
+  const filteredChats = displayChats.filter(chat => {
     let typeMatch = false;
     if (activeTab === 'todos') typeMatch = true;
     else if (activeTab === 'oportunidades') typeMatch = chat.type === 'Oportunidad';
@@ -358,7 +484,7 @@ const App = () => {
     let dateMatch = true;
     const today = getTodayDate();
     if (dateFilter === 'today') {
-      dateMatch = chat.date === today;
+      dateMatch = chat.date === today || chat.date?.startsWith(today);
     } else if (dateFilter === 'week') {
       dateMatch = true;
     }
@@ -367,8 +493,8 @@ const App = () => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       searchMatch =
-        chat.name.toLowerCase().includes(q) ||
-        chat.lastMsg.toLowerCase().includes(q) ||
+        (chat.name?.toLowerCase().includes(q)) ||
+        (chat.lastMsg?.toLowerCase().includes(q)) ||
         (chat.aiAnalysis?.item && chat.aiAnalysis.item.toLowerCase().includes(q)) ||
         (chat.aiAnalysis?.intent && chat.aiAnalysis.intent.toLowerCase().includes(q));
     }
@@ -583,6 +709,16 @@ const App = () => {
                         </div>
                         <div className="flex gap-1">
                           {isMobileView && <button onClick={() => setShowMobileInfo(true)} className={`p-2 rounded-lg text-emerald-500 hover:bg-emerald-500/10`}><ShieldCheck size={20} /></button>}
+                          {/* Botón cerrar conversación (solo para conversaciones reales) */}
+                          {selectedChat.conversationId && (
+                            <button
+                              onClick={() => handleCloseConversation('resolved')}
+                              className={`p-2 rounded-lg transition-colors text-red-400 hover:bg-red-500/10`}
+                              title="Cerrar conversación"
+                            >
+                              <XCircle size={18} />
+                            </button>
+                          )}
                           <button className={`p-2 rounded-lg hover:bg-opacity-10 transition-colors ${theme.textMuted} hover:bg-slate-500`}><MoreVertical size={18} /></button>
                         </div>
                       </div>
