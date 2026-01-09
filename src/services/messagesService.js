@@ -67,6 +67,41 @@ export const getMessages = async (conversationId) => {
     return data;
 };
 
+// Obtener TODOS los mensajes de un cliente (de todas sus conversaciones)
+// status: 'open' para solo abiertas, 'closed' para solo cerradas, null para todas
+export const getMessagesByClient = async (clientId, phoneId, status = null) => {
+    // Construir query para conversaciones del cliente
+    let query = supabase
+        .from('whatsapp_conversations')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('phone_id', phoneId);
+
+    // Filtrar por status si se especifica
+    if (status) {
+        query = query.eq('status', status);
+    }
+
+    const { data: conversations, error: convError } = await query;
+
+    if (convError) throw convError;
+    if (!conversations || conversations.length === 0) return [];
+
+    // Obtener mensajes de todas las conversaciones filtradas
+    const conversationIds = conversations.map(c => c.id);
+    const { data: messages, error: msgError } = await supabase
+        .from('whatsapp_messages')
+        .select(`
+      *,
+      media:whatsapp_message_media(id, media_index, media_url, media_content_type)
+    `)
+        .in('conversation_id', conversationIds)
+        .order('created_at', { ascending: true });
+
+    if (msgError) throw msgError;
+    return messages;
+};
+
 // Marcar conversación como leída
 export const markAsRead = async (conversationId) => {
     // Marcar todos los mensajes como leídos

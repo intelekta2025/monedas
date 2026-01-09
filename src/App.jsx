@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
 import { getWhatsappPhones } from './services/whatsappService';
-import { getConversations, getMessages, subscribeToConversations, closeConversation, markAsRead } from './services/messagesService';
+import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
 import {
   MessageCircle,
   Trash2,
@@ -39,7 +39,9 @@ import {
   Loader2,
   AlertCircle,
   Phone,
-  XCircle
+  LogOut,
+  XCircle,
+  Archive
 } from 'lucide-react';
 
 // --- COMPONENTE DE LOGIN ---
@@ -159,7 +161,7 @@ const LoginScreen = () => {
 // --- COMPONENTE PRINCIPAL APP ---
 const App = () => {
   // ESTADO DE AUTENTICACIÓN (desde Supabase)
-  const { isAuthenticated, loading, profile } = useAuth();
+  const { isAuthenticated, loading, profile, signOut } = useAuth();
 
   // CONFIGURACIÓN INICIAL PARA DEMO
   const [activeTab, setActiveTab] = useState('oportunidades');
@@ -177,12 +179,14 @@ const App = () => {
   const [whatsappPhones, setWhatsappPhones] = useState([]);
   const [selectedPhone, setSelectedPhone] = useState(null);
   const [phonesLoading, setPhonesLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState(null);
 
   // Estado para conversaciones reales
   const [conversations, setConversations] = useState([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
+  const [showClosedConversations, setShowClosedConversations] = useState(false);
 
   // Helper para fechas
   const getTodayDate = () => new Date().toISOString().split('T')[0];
@@ -193,15 +197,21 @@ const App = () => {
   useEffect(() => {
     const loadPhones = async () => {
       if (!isAuthenticated) return;
+      console.log('App: Cargando teléfonos WhatsApp...');
       setPhonesLoading(true);
+      setConnectionError(null);
       try {
         const phones = await getWhatsappPhones();
+        console.log('App: Teléfonos cargados:', phones);
         setWhatsappPhones(phones || []);
+        setConnectionError(null);
         // Seleccionar el default o el primero
         const defaultPhone = phones?.find(p => p.is_default) || phones?.[0];
+        console.log('App: Teléfono seleccionado:', defaultPhone);
         if (defaultPhone) setSelectedPhone(defaultPhone);
       } catch (err) {
         console.error('Error cargando teléfonos:', err);
+        setConnectionError('No se pudo conectar a Supabase. Verifica tu conexión.');
       } finally {
         setPhonesLoading(false);
       }
@@ -209,32 +219,56 @@ const App = () => {
     loadPhones();
   }, [isAuthenticated]);
 
-  // Cargar conversaciones cuando cambia el teléfono seleccionado
+  // Cargar conversaciones cuando cambia el teléfono seleccionado o el filtro
   useEffect(() => {
-    const loadConversations = async () => {
+    const loadConversations = async (isPolling = false) => {
       if (!selectedPhone?.id) {
+        console.log('App: No hay teléfono seleccionado, limpiando conversaciones');
         setConversations([]);
         return;
       }
-      setConversationsLoading(true);
+      // Solo mostrar loading en carga inicial, no en polling
+      if (!isPolling) {
+        console.log(`App: Cargando conversaciones ${showClosedConversations ? 'cerradas' : 'abiertas'} para teléfono:`, selectedPhone.id);
+        setConversationsLoading(true);
+      }
       try {
-        const convs = await getConversations(selectedPhone.id);
+        const convs = showClosedConversations
+          ? await getClosedConversations(selectedPhone.id)
+          : await getConversations(selectedPhone.id);
+        if (!isPolling) {
+          console.log('App: Conversaciones cargadas:', convs);
+        }
         setConversations(convs || []);
-        // Seleccionar la primera conversación si hay
-        if (convs?.length > 0 && !selectedConversation) {
-          setSelectedConversation(convs[0]);
+        // Solo limpiar selección en carga inicial
+        if (!isPolling) {
+          setSelectedChat(null);
+          setSelectedConversation(null);
+          setChatMessages([]);
         }
       } catch (err) {
         console.error('Error cargando conversaciones:', err);
       } finally {
-        setConversationsLoading(false);
+        if (!isPolling) {
+          setConversationsLoading(false);
+        }
       }
     };
-    loadConversations();
 
-    // Suscribirse a cambios en tiempo real
-    if (selectedPhone?.id) {
-      const unsubscribe = subscribeToConversations(selectedPhone.id, (payload) => {
+    // Carga inicial
+    loadConversations(false);
+
+    // Polling cada 30 segundos para nuevas conversaciones
+    const intervalId = setInterval(() => {
+      if (selectedPhone?.id) {
+        loadConversations(true);
+      }
+    }, 30000);
+
+    // Suscribirse a cambios en tiempo real (solo para conversaciones abiertas)
+    let unsubscribe;
+    if (selectedPhone?.id && !showClosedConversations) {
+      unsubscribe = subscribeToConversations(selectedPhone.id, (payload) => {
         if (payload.eventType === 'INSERT') {
           setConversations(prev => [payload.new, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
@@ -243,26 +277,47 @@ const App = () => {
           );
         }
       });
-      return unsubscribe;
     }
-  }, [selectedPhone?.id]);
 
-  // Cargar mensajes cuando cambia la conversación seleccionada
+    // Limpiar intervalo y suscripción al desmontar
+    return () => {
+      clearInterval(intervalId);
+      if (unsubscribe) unsubscribe();
+    };
+  }, [selectedPhone?.id, showClosedConversations]);
+
+  // Cargar mensajes cuando cambia la conversación seleccionada + polling cada 10 seg
+  // Ahora carga TODOS los mensajes del cliente (de todas sus conversaciones)
   useEffect(() => {
     const loadMessages = async () => {
-      if (!selectedConversation?.id) {
+      // Necesitamos client_id y phoneId para cargar historial completo
+      if (!selectedConversation?.client_id || !selectedPhone?.id) {
         setChatMessages([]);
         return;
       }
       try {
-        const msgs = await getMessages(selectedConversation.id);
+        // Cargar mensajes del cliente, filtrando por status según la vista actual
+        const status = showClosedConversations ? 'closed' : 'open';
+        const msgs = await getMessagesByClient(selectedConversation.client_id, selectedPhone.id, status);
         setChatMessages(msgs || []);
       } catch (err) {
         console.error('Error cargando mensajes:', err);
       }
     };
+
+    // Carga inicial
     loadMessages();
-  }, [selectedConversation?.id]);
+
+    // Polling cada 10 segundos para mantener mensajes actualizados
+    const intervalId = setInterval(() => {
+      if (selectedConversation?.client_id && selectedPhone?.id) {
+        loadMessages();
+      }
+    }, 10000);
+
+    // Limpiar intervalo al cambiar de cliente o desmontar
+    return () => clearInterval(intervalId);
+  }, [selectedConversation?.client_id, selectedPhone?.id, showClosedConversations]);
 
   const chats = [
     {
@@ -388,19 +443,26 @@ const App = () => {
   const isMobileView = simulatedDevice === 'mobile';
 
   const handleChatSelect = async (chat) => {
+    console.log('handleChatSelect: Seleccionando chat:', chat);
     setSelectedChat(chat);
     setShowMobileInfo(false);
     setFeedback(null);
 
     // Si es una conversación real, cargar los mensajes
     if (chat.conversationId) {
+      console.log('handleChatSelect: Cargando mensajes para conversación:', chat.conversationId);
       setSelectedConversation({ id: chat.conversationId });
       try {
         const msgs = await getMessages(chat.conversationId);
+        console.log('handleChatSelect: Mensajes cargados:', msgs);
         setChatMessages(msgs || []);
       } catch (err) {
         console.error('Error cargando mensajes:', err);
+        setChatMessages([]);
       }
+    } else {
+      // Para chats demo, limpiar chatMessages
+      setChatMessages([]);
     }
   };
 
@@ -420,6 +482,22 @@ const App = () => {
       setSelectedChat(null);
     } catch (err) {
       console.error('Error cerrando conversación:', err);
+    }
+  };
+
+  // Reabrir conversación cerrada
+  const handleReopenConversation = async () => {
+    if (!selectedChat?.conversationId) return;
+    try {
+      await reopenConversation(selectedChat.conversationId);
+      // Refrescar lista de conversaciones cerradas
+      const convs = await getClosedConversations(selectedPhone.id);
+      setConversations(convs || []);
+      setSelectedChat(null);
+      // Opcional: cambiar a vista de abiertas
+      setShowClosedConversations(false);
+    } catch (err) {
+      console.error('Error reabriendo conversación:', err);
     }
   };
 
@@ -471,8 +549,8 @@ const App = () => {
     suggestedReply: ''
   }));
 
-  // Usar conversaciones reales si hay, sino demo
-  const displayChats = realChatsFormatted.length > 0 ? realChatsFormatted : chats;
+  // Usar solo conversaciones reales (sin demo data)
+  const displayChats = realChatsFormatted;
 
   const filteredChats = displayChats.filter(chat => {
     let typeMatch = false;
@@ -505,36 +583,42 @@ const App = () => {
   const analysisImage = getAnalysisImage(selectedChat);
 
   // --- Componente de Editor de Respuesta (Reutilizable) ---
-  const ReplyEditor = ({ chat }) => (
-    <div className={`flex-shrink-0 p-3 lg:p-5 pt-2 border-t z-20 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-gray-100 bg-white'}`}>
-      <div className="flex items-center justify-between mb-2 lg:mb-3">
-        <p className={`text-[10px] uppercase font-bold flex items-center gap-2 ${theme.textMuted}`}>
-          <MessageCircle size={12} /> Borrador de Respuesta
-        </p>
-        {chat.suggestedReply.includes('Cita') && (
-          <span className="text-[9px] text-green-600 font-bold flex items-center gap-1 bg-green-100 px-2 py-0.5 rounded-full">
-            <Calendar size={10} /> AGENDADO
-          </span>
-        )}
-      </div>
+  const ReplyEditor = ({ chat }) => {
+    // Si no hay análisis de IA aún, usar valores por defecto
+    const category = chat.aiAnalysis?.category || 'valuation';
+    const suggestedReply = chat.suggestedReply || '';
 
-      <div className={`rounded-xl border shadow-inner overflow-hidden flex flex-col ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-200'}`}>
-        <textarea
-          className={`w-full p-3 lg:p-4 bg-transparent border-none outline-none text-sm resize-none font-medium leading-relaxed custom-scrollbar h-20 lg:h-40 ${theme.text}`}
-          defaultValue={chat.suggestedReply}
-          placeholder="Escribe tu respuesta aquí..."
-        />
-        <div className={`p-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-200'} bg-opacity-50 flex justify-end`}>
-          <button className={`py-2 px-4 lg:px-6 rounded-lg font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-2 text-white ${chat.aiAnalysis.category === 'inquiry'
-            ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-blue-500/20'
-            : 'bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-emerald-500/20'
-            }`}>
-            <Send size={14} /> Enviar
-          </button>
+    return (
+      <div className={`flex-shrink-0 p-3 lg:p-5 pt-2 border-t z-20 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-gray-100 bg-white'}`}>
+        <div className="flex items-center justify-between mb-2 lg:mb-3">
+          <p className={`text-[10px] uppercase font-bold flex items-center gap-2 ${theme.textMuted}`}>
+            <MessageCircle size={12} /> Borrador de Respuesta
+          </p>
+          {suggestedReply.includes('Cita') && (
+            <span className="text-[9px] text-green-600 font-bold flex items-center gap-1 bg-green-100 px-2 py-0.5 rounded-full">
+              <Calendar size={10} /> AGENDADO
+            </span>
+          )}
+        </div>
+
+        <div className={`rounded-xl border shadow-inner overflow-hidden flex flex-col ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-200'}`}>
+          <textarea
+            className={`w-full p-3 lg:p-4 bg-transparent border-none outline-none text-sm resize-none font-medium leading-relaxed custom-scrollbar h-20 lg:h-40 ${theme.text}`}
+            defaultValue={suggestedReply}
+            placeholder="Escribe tu respuesta aquí..."
+          />
+          <div className={`p-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-200'} bg-opacity-50 flex justify-end`}>
+            <button className={`py-2 px-4 lg:px-6 rounded-lg font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-2 text-white ${category === 'inquiry'
+              ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-blue-500/20'
+              : 'bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-emerald-500/20'
+              }`}>
+              <Send size={14} /> Enviar
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const getContainerStyle = () => {
     switch (simulatedDevice) {
@@ -634,6 +718,14 @@ const App = () => {
                     <button className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><LayoutGrid size={16} /> <span className="hidden xl:inline">Dashboard</span></button>
                     <button onClick={() => setCurrentView('settings')} className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><Settings size={16} /></button>
                     <div className={`w-9 h-9 rounded-full ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-200 border-gray-300'} flex items-center justify-center border cursor-pointer`}><User size={18} className={theme.textMuted} /></div>
+                    <button
+                      onClick={signOut}
+                      className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors text-red-400 ${isDarkMode ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
+                      title="Cerrar sesión"
+                    >
+                      <LogOut size={16} />
+                      <span className="hidden xl:inline">Salir</span>
+                    </button>
                   </>
                 )}
               </div>
@@ -657,6 +749,15 @@ const App = () => {
                   <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
                     <h2 className={`font-bold text-sm ${theme.text} flex items-center gap-2`}><MessageCircle size={18} className={theme.accent} /> Mensajes</h2>
                     <div className="flex items-center gap-2">
+                      {/* Toggle para ver conversaciones cerradas */}
+                      <button
+                        onClick={() => setShowClosedConversations(!showClosedConversations)}
+                        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${showClosedConversations ? 'bg-gray-500 text-white' : `${theme.textMuted} hover:bg-slate-800/50`}`}
+                        title={showClosedConversations ? 'Ver abiertas' : 'Ver cerradas'}
+                      >
+                        <Archive size={12} />
+                        <span className="hidden sm:inline">{showClosedConversations ? 'Cerradas' : 'Abiertas'}</span>
+                      </button>
                       <button onClick={cycleDateFilter} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${dateFilter !== 'any' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : `${theme.textMuted} hover:bg-slate-800/50`}`}><Calendar size={12} /><span className={`${isMobileView ? 'hidden' : 'hidden sm:inline'}`}>{dateFilter === 'today' ? 'Hoy' : dateFilter === 'week' ? '7 Días' : 'Fecha'}</span></button>
                       <div className={`text-[10px] font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-gray-100 text-gray-500'}`}>{filteredChats.length}</div>
                     </div>
@@ -671,7 +772,44 @@ const App = () => {
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 custom-scrollbar">
-                    {filteredChats.map((chat) => (
+                    {/* Indicador de error de conexión */}
+                    {connectionError && (
+                      <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200'} text-center`}>
+                        <AlertCircle size={32} className="text-red-400 mx-auto mb-2" />
+                        <p className="text-red-400 text-sm font-medium mb-1">Error de conexión</p>
+                        <p className={`text-xs ${theme.textMuted} mb-3`}>{connectionError}</p>
+                        <button
+                          onClick={() => window.location.reload()}
+                          className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors"
+                        >
+                          Reintentar
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Indicador de carga */}
+                    {phonesLoading && !connectionError && (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <Loader2 size={32} className="animate-spin text-emerald-500 mb-2" />
+                        <p className={`text-sm ${theme.textMuted}`}>Cargando...</p>
+                      </div>
+                    )}
+
+                    {/* Sin conversaciones (datos reales) */}
+                    {!connectionError && !phonesLoading && realChatsFormatted.length === 0 && (
+                      <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'} text-center`}>
+                        <MessageCircle size={32} className={`${theme.textMuted} mx-auto mb-2 opacity-50`} />
+                        <p className={`text-sm font-medium ${theme.textMuted}`}>Sin conversaciones</p>
+                        <p className={`text-xs ${theme.textMuted} mt-1`}>
+                          {whatsappPhones.length === 0
+                            ? 'No hay teléfonos WhatsApp configurados'
+                            : 'No hay conversaciones activas'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Lista de conversaciones */}
+                    {!connectionError && filteredChats.map((chat) => (
                       <div key={chat.id} onClick={() => handleChatSelect(chat)} className={`p-3 rounded-xl cursor-pointer transition-all border group relative ${selectedChat?.id === chat.id && !isMobileView ? `${isDarkMode ? 'bg-slate-800 border-emerald-500/40' : 'bg-emerald-50 border-emerald-200'} shadow-md` : `${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'} border-transparent`}`}>
                         <div className="flex gap-3">
                           <div className="relative">
@@ -709,8 +847,8 @@ const App = () => {
                         </div>
                         <div className="flex gap-1">
                           {isMobileView && <button onClick={() => setShowMobileInfo(true)} className={`p-2 rounded-lg text-emerald-500 hover:bg-emerald-500/10`}><ShieldCheck size={20} /></button>}
-                          {/* Botón cerrar conversación (solo para conversaciones reales) */}
-                          {selectedChat.conversationId && (
+                          {/* Botón cerrar conversación (solo para conversaciones abiertas) */}
+                          {selectedChat.conversationId && !showClosedConversations && (
                             <button
                               onClick={() => handleCloseConversation('resolved')}
                               className={`p-2 rounded-lg transition-colors text-red-400 hover:bg-red-500/10`}
@@ -719,12 +857,51 @@ const App = () => {
                               <XCircle size={18} />
                             </button>
                           )}
+                          {/* Botón reabrir conversación (solo para conversaciones cerradas) */}
+                          {selectedChat.conversationId && showClosedConversations && (
+                            <button
+                              onClick={handleReopenConversation}
+                              className={`p-2 rounded-lg transition-colors text-emerald-400 hover:bg-emerald-500/10`}
+                              title="Reabrir conversación"
+                            >
+                              <Archive size={18} />
+                            </button>
+                          )}
                           <button className={`p-2 rounded-lg hover:bg-opacity-10 transition-colors ${theme.textMuted} hover:bg-slate-500`}><MoreVertical size={18} /></button>
                         </div>
                       </div>
 
                       <div ref={chatContainerRef} className={`flex-1 ${isDarkMode ? 'bg-slate-950/50' : 'bg-gray-50/50'} p-4 lg:p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4`}>
-                        {selectedChat.history ? (
+                        {/* Para conversaciones reales, usar chatMessages; para demo, usar history */}
+                        {selectedChat.conversationId && chatMessages.length > 0 ? (
+                          chatMessages.map((msg, idx) => {
+                            const sender = msg.direction === 'inbound' ? 'user' : 'bot';
+                            const msgTime = new Date(msg.created_at).toLocaleString('es-MX', {
+                              hour: '2-digit', minute: '2-digit', hour12: true
+                            });
+                            const hasImage = msg.num_media > 0 && msg.media?.[0]?.media_url;
+                            return (
+                              <div key={msg.id || idx} className={`flex ${sender === 'user' ? 'justify-start' : 'justify-end'}`}>
+                                <div className={`max-w-[85%] lg:max-w-[80%] rounded-2xl p-3 lg:p-4 text-sm leading-relaxed relative group transition-all ${sender === 'user' ? theme.chatBubbleUser : theme.chatBubbleBot} ${sender === 'user' ? 'rounded-tl-none' : 'rounded-tr-none'}`}>
+                                  {hasImage ? (
+                                    <div className="space-y-2">
+                                      <div className="relative rounded-lg overflow-hidden shadow-md">
+                                        <img src={msg.media[0].media_url} alt="Evidencia" className="w-full h-auto object-cover max-h-[300px]" />
+                                      </div>
+                                      {msg.body && <p className={`text-xs ${theme.textMuted} italic`}>{msg.body}</p>}
+                                    </div>
+                                  ) : (
+                                    <p className={isDarkMode || sender === 'bot' ? theme.text : 'text-gray-700'}>{msg.body}</p>
+                                  )}
+                                  <div className={`flex items-center gap-1 mt-1.5 opacity-40 text-[9px] font-bold uppercase ${sender === 'user' ? 'justify-start' : 'justify-end'}`}>
+                                    {msgTime}
+                                    {sender === 'bot' && <CheckCircle size={10} />}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : selectedChat.history && selectedChat.history.length > 0 ? (
                           selectedChat.history.map((msg, idx) => (
                             <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}>
                               <div className={`max-w-[85%] lg:max-w-[80%] rounded-2xl p-3 lg:p-4 text-sm leading-relaxed relative group transition-all ${msg.sender === 'user' ? theme.chatBubbleUser : theme.chatBubbleBot} ${msg.sender === 'user' ? 'rounded-tl-none' : 'rounded-tr-none'}`}>
@@ -733,7 +910,13 @@ const App = () => {
                               </div>
                             </div>
                           ))
-                        ) : null}
+                        ) : (
+                          <div className="flex-1 flex flex-col items-center justify-center opacity-40">
+                            <MessageCircle size={48} className="mb-3 text-gray-400" />
+                            <p className={`text-sm font-medium ${theme.textMuted}`}>No hay mensajes aún</p>
+                            <p className={`text-xs ${theme.textMuted} mt-1`}>El cliente no ha enviado mensajes</p>
+                          </div>
+                        )}
                       </div>
 
                       {/* EDITOR DE RESPUESTA (Aquí para Móvil) */}
@@ -751,20 +934,30 @@ const App = () => {
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} transition-colors duration-300 overflow-hidden
               `}>
                   {isMobileView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-500">Análisis IA</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
-                  {!isMobileView && <div className={`p-4 border-b ${theme.cardBorder} ${isDarkMode ? 'bg-emerald-900/10' : 'bg-emerald-50'} flex items-center gap-2 flex-shrink-0`}><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-600 uppercase tracking-wider">{selectedChat?.aiAnalysis.category === 'inquiry' ? 'Intención' : 'Análisis'}</h2></div>}
+                  {!isMobileView && <div className={`p-4 border-b ${theme.cardBorder} ${isDarkMode ? 'bg-emerald-900/10' : 'bg-emerald-50'} flex items-center gap-2 flex-shrink-0`}><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-600 uppercase tracking-wider">{selectedChat?.aiAnalysis?.category === 'inquiry' ? 'Intención' : 'Análisis'}</h2></div>}
 
                   {selectedChat ? (
                     <>
                       <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-0">
-                        <div className={`rounded-xl p-5 mb-5 relative overflow-hidden border shadow-sm ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-100'}`}>
-                          <div className={`absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8 rotate-45 opacity-10 ${['Oportunidad', 'Consulta'].includes(selectedChat.type) ? (selectedChat.type === 'Consulta' ? 'bg-blue-500' : 'bg-emerald-500') : 'bg-gray-500'}`}></div>
-                          {selectedChat.aiAnalysis.category === 'inquiry' ? (
-                            <div className="relative z-10"><p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Cliente busca:</p><h3 className={`text-xl font-serif font-bold leading-tight mb-4 flex items-center gap-2 ${theme.text}`}><ShoppingBag size={20} className="text-blue-500" /> {selectedChat.aiAnalysis.intent}</h3><div className="space-y-4"><div><p className={`text-[10px] uppercase font-bold mb-1 ${theme.textMuted}`}>Keywords Detectadas</p><div className="flex flex-wrap gap-1.5">{selectedChat.aiAnalysis.keywords.map((k, i) => (<span key={i} className={`px-2 py-1 rounded-md text-[10px] font-medium border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>{k}</span>))}</div></div></div></div>
-                          ) : (
-                            <div className="relative z-10"><p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Identificación IA</p>{analysisImage && (<div className={`mb-4 group relative rounded-lg overflow-hidden border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-100'} shadow-sm w-full h-32`}><img src={analysisImage} alt="Pieza analizada" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]"><a href={analysisImage} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors border border-white/20"><Eye size={16} /></a></div></div>)}<h3 className={`text-lg font-serif font-bold leading-tight mb-4 ${theme.text}`}>{selectedChat.aiAnalysis.item}</h3>{analysisImage && (<a href={analysisImage} target="_blank" rel="noopener noreferrer" className={`text-[10px] flex items-center gap-1 hover:underline mb-2 opacity-60 hover:opacity-100 transition-opacity ${theme.accent}`}><ExternalLink size={10} /> Ver imagen original</a>)}</div>
-                          )}
-                          <div className={`pt-4 mt-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex items-center justify-between`}><div><p className={`text-[10px] uppercase font-bold mb-1 ${theme.textMuted}`}>Veredicto IA</p><div className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${selectedChat.type === 'Basura' ? 'bg-gray-400' : (selectedChat.type === 'Consulta' ? 'bg-blue-500' : 'bg-emerald-500')}`}></span><p className={`text-sm font-bold ${selectedChat.type === 'Basura' ? 'text-gray-400' : (selectedChat.type === 'Consulta' ? 'text-blue-500' : 'text-emerald-500')}`}>{selectedChat.aiAnalysis.verdict}</p></div></div><div className="flex flex-col items-end gap-1"><p className={`text-[9px] uppercase font-bold ${theme.textMuted}`}>¿Correcto?</p><div className="flex gap-1"><button onClick={() => setFeedback('up')} className={`p-1.5 rounded transition-colors ${feedback === 'up' ? 'text-green-500 bg-green-500/10' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button><button onClick={() => setFeedback('down')} className={`p-1.5 rounded transition-colors ${feedback === 'down' ? 'text-red-500 bg-red-500/10' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button></div></div></div>
-                        </div>
+                        {/* Si hay análisis de IA, mostrarlo */}
+                        {selectedChat.aiAnalysis ? (
+                          <div className={`rounded-xl p-5 mb-5 relative overflow-hidden border shadow-sm ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-100'}`}>
+                            <div className={`absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8 rotate-45 opacity-10 ${['Oportunidad', 'Consulta'].includes(selectedChat.type) ? (selectedChat.type === 'Consulta' ? 'bg-blue-500' : 'bg-emerald-500') : 'bg-gray-500'}`}></div>
+                            {selectedChat.aiAnalysis.category === 'inquiry' ? (
+                              <div className="relative z-10"><p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Cliente busca:</p><h3 className={`text-xl font-serif font-bold leading-tight mb-4 flex items-center gap-2 ${theme.text}`}><ShoppingBag size={20} className="text-blue-500" /> {selectedChat.aiAnalysis.intent}</h3><div className="space-y-4"><div><p className={`text-[10px] uppercase font-bold mb-1 ${theme.textMuted}`}>Keywords Detectadas</p><div className="flex flex-wrap gap-1.5">{selectedChat.aiAnalysis.keywords.map((k, i) => (<span key={i} className={`px-2 py-1 rounded-md text-[10px] font-medium border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>{k}</span>))}</div></div></div></div>
+                            ) : (
+                              <div className="relative z-10"><p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Identificación IA</p>{analysisImage && (<div className={`mb-4 group relative rounded-lg overflow-hidden border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-100'} shadow-sm w-full h-32`}><img src={analysisImage} alt="Pieza analizada" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]"><a href={analysisImage} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors border border-white/20"><Eye size={16} /></a></div></div>)}<h3 className={`text-lg font-serif font-bold leading-tight mb-4 ${theme.text}`}>{selectedChat.aiAnalysis.item}</h3>{analysisImage && (<a href={analysisImage} target="_blank" rel="noopener noreferrer" className={`text-[10px] flex items-center gap-1 hover:underline mb-2 opacity-60 hover:opacity-100 transition-opacity ${theme.accent}`}><ExternalLink size={10} /> Ver imagen original</a>)}</div>
+                            )}
+                            <div className={`pt-4 mt-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex items-center justify-between`}><div><p className={`text-[10px] uppercase font-bold mb-1 ${theme.textMuted}`}>Veredicto IA</p><div className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${selectedChat.type === 'Basura' ? 'bg-gray-400' : (selectedChat.type === 'Consulta' ? 'bg-blue-500' : 'bg-emerald-500')}`}></span><p className={`text-sm font-bold ${selectedChat.type === 'Basura' ? 'text-gray-400' : (selectedChat.type === 'Consulta' ? 'text-blue-500' : 'text-emerald-500')}`}>{selectedChat.aiAnalysis.verdict}</p></div></div><div className="flex flex-col items-end gap-1"><p className={`text-[9px] uppercase font-bold ${theme.textMuted}`}>¿Correcto?</p><div className="flex gap-1"><button onClick={() => setFeedback('up')} className={`p-1.5 rounded transition-colors ${feedback === 'up' ? 'text-green-500 bg-green-500/10' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button><button onClick={() => setFeedback('down')} className={`p-1.5 rounded transition-colors ${feedback === 'down' ? 'text-red-500 bg-red-500/10' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button></div></div></div>
+                          </div>
+                        ) : (
+                          /* Si no hay análisis de IA, mostrar placeholder */
+                          <div className={`rounded-xl p-5 mb-5 relative overflow-hidden border shadow-sm ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-100'} text-center`}>
+                            <ShieldCheck size={40} className={`mx-auto mb-3 ${theme.textMuted} opacity-50`} />
+                            <p className={`text-sm font-medium ${theme.textMuted}`}>Sin análisis de IA</p>
+                            <p className={`text-xs ${theme.textMuted} mt-1`}>La conversación aún no ha sido analizada</p>
+                          </div>
+                        )}
                       </div>
 
                       {/* EDITOR DE RESPUESTA (Aquí para Desktop) */}

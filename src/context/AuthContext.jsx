@@ -30,14 +30,24 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const initSession = async () => {
             try {
-                const session = await getSession();
+                console.log('AuthContext: Iniciando sesión...');
+                // Timeout de 30 segundos para evitar quedarse cargando infinitamente
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Timeout: Supabase no respondió')), 30000)
+                );
+
+                const session = await Promise.race([getSession(), timeoutPromise]);
+                console.log('AuthContext: Sesión obtenida:', session ? 'válida' : 'ninguna');
+
                 if (session?.user) {
                     setUser(session.user);
                     await loadProfile(session.user.id);
                 }
             } catch (error) {
                 console.error('Error inicializando sesión:', error);
+                // Aunque falle, permitir que la app continúe para mostrar login
             } finally {
+                console.log('AuthContext: Finalizando carga, mostrando app');
                 setLoading(false);
             }
         };
@@ -70,9 +80,27 @@ export const AuthProvider = ({ children }) => {
 
     // Logout
     const signOut = async () => {
-        await authSignOut();
+        console.log('AuthContext: Iniciando cierre de sesión...');
+        try {
+            await authSignOut();
+            console.log('AuthContext: Sesión cerrada en Supabase');
+        } catch (error) {
+            console.error('AuthContext: Error cerrando sesión en Supabase (ignorando):', error);
+        }
+        // Siempre limpiar estado local, sin importar el resultado de Supabase
         setUser(null);
         setProfile(null);
+        // Limpiar localStorage también por si acaso
+        localStorage.removeItem('sb-' + window.location.hostname.split('.')[0] + '-auth-token');
+        // Forzar limpieza de todo lo relacionado a Supabase auth
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('sb-')) {
+                localStorage.removeItem(key);
+            }
+        });
+        console.log('AuthContext: Estado local limpiado');
+        // Forzar recarga de la página para mostrar login
+        window.location.reload();
     };
 
     const value = {
