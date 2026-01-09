@@ -187,6 +187,7 @@ const App = () => {
   const [conversationsLoading, setConversationsLoading] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(false); // New state
   const [showClosedConversations, setShowClosedConversations] = useState(false);
 
   // Helper para fechas
@@ -293,11 +294,24 @@ const App = () => {
     const loadMessages = async () => {
       // Necesitamos client_id y phoneId para cargar historial completo
       if (!selectedConversation?.client_id || !selectedPhone?.id) {
-        setChatMessages([]);
+        // Evitar borrar mensajes si solo falta el client_id pero ya cargamos por conversation_id
+        // setChatMessages([]); 
         return;
       }
       try {
-        // Cargar mensajes del cliente, filtrando por status según la vista actual
+        // Solo mostrar loading si es la primera carga (no polling) o si es explícito
+        // Pero como es polling, mejor no flashear loading. 
+        // Solo indicaremos loading en handleChatSelect que es manual.
+
+        // Prioridad: Si tenemos una conversación específica seleccionada, cargar sus mensajes directamente
+        // Esto es más robusto y evita problemas de filtros de status/phone que tiene getMessagesByClient
+        if (selectedConversation.id) {
+          const msgs = await getMessages(selectedConversation.id);
+          setChatMessages(msgs || []);
+          return;
+        }
+
+        // Fallback: Cargar por cliente (comportamiento anterior, útil si no hay conv ID específica)
         const status = showClosedConversations ? 'closed' : 'open';
         const msgs = await getMessagesByClient(selectedConversation.client_id, selectedPhone.id, status);
         setChatMessages(msgs || []);
@@ -446,25 +460,34 @@ const App = () => {
   const handleChatSelect = async (chat) => {
     console.log('handleChatSelect: Seleccionando chat:', chat);
     setSelectedChat(chat);
+    // Actualizar estado para el polling
+    setSelectedConversation({ id: chat.conversationId, client_id: chat.clientId });
     setShowMobileInfo(false);
     setFeedback(null);
 
     // Si es una conversación real, cargar los mensajes
     if (chat.conversationId) {
+      // Limpiar mensajes anteriores inmediatamente para evitar confusión visual
+      setChatMessages([]);
+      setMessagesLoading(true);
+
       console.log('handleChatSelect: Cargando mensajes para conversación:', chat.conversationId);
-      setSelectedConversation({ id: chat.conversationId });
       try {
         const msgs = await getMessages(chat.conversationId);
         console.log('handleChatSelect: Mensajes cargados:', msgs);
         setChatMessages(msgs || []);
       } catch (err) {
         console.error('Error cargando mensajes:', err);
+        alert('Error cargando mensajes: ' + err.message);
         setChatMessages([]);
+      } finally {
+        setMessagesLoading(false);
       }
     } else {
       // Para chats demo, limpiar chatMessages
       setChatMessages([]);
     }
+
   };
 
   const handleBackToList = () => {
@@ -584,132 +607,7 @@ const App = () => {
   const analysisImage = getAnalysisImage(selectedChat);
 
   // --- Componente de Editor de Respuesta (Reutilizable) ---
-  const ReplyEditor = ({ chat }) => {
-    // Si no hay análisis de IA aún, usar valores por defecto
-    const category = chat?.aiAnalysis?.category || 'valuation';
-    const suggestedReply = chat?.suggestedReply || '';
 
-    // Estado para el mensaje
-    const [responseBody, setResponseBody] = useState(suggestedReply);
-    const [isSending, setIsSending] = useState(false);
-
-    // Actualizar default si cambia la sugerencia y no hemos escrito nada
-    useEffect(() => {
-      if (suggestedReply && !responseBody) {
-        setResponseBody(suggestedReply);
-      }
-    }, [suggestedReply]);
-
-    const handleSend = async () => {
-      if (!responseBody.trim()) return;
-      if (!chat?.conversationId || !selectedPhone?.id) {
-        alert('Error: Datos de conversación incompletos');
-        return;
-      }
-
-      setIsSending(true);
-      try {
-        // URL del Webhook de n8n
-        let WEBHOOK_URL = import.meta.env.VITE_N8N_OUTBOUND_WEBHOOK || '';
-
-        // En desarrollo, usar el proxy para evitar CORS si es la URL de production
-        if (import.meta.env.DEV && WEBHOOK_URL.includes('https://n8n-t.intelekta.ai/webhook')) {
-          WEBHOOK_URL = WEBHOOK_URL.replace('https://n8n-t.intelekta.ai/webhook', '/api/n8n');
-        }
-
-        if (!WEBHOOK_URL) {
-          alert('Error: Webhook de n8n no configurado. Verifica VITE_N8N_OUTBOUND_WEBHOOK en .env');
-          setIsSending(false);
-          return;
-        }
-
-        const payload = {
-          conversation_id: chat.conversationId,
-          phone_id: selectedPhone.id,
-          to_number: chat.contactNumber,
-          from_number: selectedPhone.phone_number,
-          body: responseBody,
-          direction: 'outbound'
-        };
-
-        // Enviar a n8n
-        const response = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          throw new Error(`Error del webhook: ${response.status}`);
-        }
-
-        // Optimistic update: Guardar directamente en Supabase para feedback inmediato
-        await saveOutboundMessage({
-          conversationId: chat.conversationId,
-          phoneId: selectedPhone.id,
-          toNumber: chat.contactNumber,
-          fromNumber: selectedPhone.phone_number,
-          body: responseBody
-        });
-
-        // Limpiar y actualizar UI
-        setResponseBody('');
-        setChatMessages(prev => [...prev, {
-          id: 'temp-' + Date.now(),
-          conversation_id: chat.conversationId,
-          body: responseBody,
-          direction: 'outbound',
-          created_at: new Date().toISOString(),
-          status: 'sent'
-        }]);
-
-        console.log('Mensaje enviado exitosamente');
-
-      } catch (error) {
-        console.error('Error enviando mensaje:', error);
-        alert('Error enviando mensaje: ' + error.message);
-      } finally {
-        setIsSending(false);
-      }
-    };
-
-    return (
-      <div className={`flex-shrink-0 p-3 lg:p-5 pt-2 border-t z-20 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-gray-100 bg-white'}`}>
-        <div className="flex items-center justify-between mb-2 lg:mb-3">
-          <p className={`text-[10px] uppercase font-bold flex items-center gap-2 ${theme.textMuted}`}>
-            <MessageCircle size={12} /> Borrador de Respuesta
-          </p>
-          {suggestedReply.includes('Cita') && (
-            <span className="text-[9px] text-green-600 font-bold flex items-center gap-1 bg-green-100 px-2 py-0.5 rounded-full">
-              <Calendar size={10} /> AGENDADO
-            </span>
-          )}
-        </div>
-
-        <div className={`rounded-xl border shadow-inner overflow-hidden flex flex-col ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-200'}`}>
-          <textarea
-            className={`w-full p-3 lg:p-4 bg-transparent border-none outline-none text-sm resize-none font-medium leading-relaxed custom-scrollbar h-20 lg:h-40 ${theme.text}`}
-            value={responseBody}
-            onChange={(e) => setResponseBody(e.target.value)}
-            placeholder="Escribe tu respuesta aquí..."
-            disabled={isSending}
-          />
-          <div className={`p-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-200'} bg-opacity-50 flex justify-end`}>
-            <button
-              onClick={handleSend}
-              disabled={isSending || !responseBody.trim()}
-              className={`py-2 px-4 lg:px-6 rounded-lg font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-2 text-white ${isSending ? 'opacity-50 cursor-not-allowed' : ''} ${category === 'inquiry'
-                ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-blue-500/20'
-                : 'bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-emerald-500/20'
-                }`}>
-              {isSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              {isSending ? 'Enviando...' : 'Enviar'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
 
   const getContainerStyle = () => {
@@ -964,8 +862,12 @@ const App = () => {
                       </div>
 
                       <div ref={chatContainerRef} className={`flex-1 ${isDarkMode ? 'bg-slate-950/50' : 'bg-gray-50/50'} p-4 lg:p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4`}>
-                        {/* Para conversaciones reales, usar chatMessages; para demo, usar history */}
-                        {selectedChat.conversationId && chatMessages.length > 0 ? (
+                        {messagesLoading ? (
+                          <div className="flex flex-col items-center justify-center h-full opacity-50">
+                            <Loader2 size={32} className="animate-spin text-emerald-500 mb-2" />
+                            <p className={`text-sm ${theme.textMuted}`}>Cargando mensajes...</p>
+                          </div>
+                        ) : selectedChat.conversationId && chatMessages.length > 0 ? (
                           chatMessages.map((msg, idx) => {
                             const sender = msg.direction === 'inbound' ? 'user' : 'bot';
                             const msgTime = new Date(msg.created_at).toLocaleString('es-MX', {
@@ -1020,12 +922,15 @@ const App = () => {
                             <MessageCircle size={48} className="mb-3 text-gray-400" />
                             <p className={`text-sm font-medium ${theme.textMuted}`}>No hay mensajes aún</p>
                             <p className={`text-xs ${theme.textMuted} mt-1`}>El cliente no ha enviado mensajes</p>
+                            <p className="text-[10px] text-gray-400 font-mono mt-4 select-all">
+                              ID: {selectedChat.conversationId} | Client: {selectedChat.clientId || 'N/A'}
+                            </p>
                           </div>
                         )}
                       </div>
 
                       {/* EDITOR DE RESPUESTA (Aquí para Móvil) */}
-                      {isMobileView && <ReplyEditor chat={selectedChat} />}
+                      {isMobileView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} />}
                     </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center opacity-40"><MessageCircle size={64} className="mb-4 text-gray-400" /><p className={`text-sm font-medium ${theme.textMuted}`}>Selecciona una conversación</p></div>
@@ -1066,7 +971,7 @@ const App = () => {
                       </div>
 
                       {/* EDITOR DE RESPUESTA (Aquí para Desktop) */}
-                      {!isMobileView && <ReplyEditor chat={selectedChat} />}
+                      {!isMobileView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} />}
                     </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center opacity-40 p-8 text-center"><ShieldCheck size={48} className="mb-4 text-gray-400" /><p className={`text-xs font-bold uppercase tracking-widest ${theme.textMuted}`}>Esperando análisis...</p></div>
@@ -1076,6 +981,134 @@ const App = () => {
               </main>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Componente ReplyEditor extraído para evitar re-renders innecesarios
+const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages }) => {
+  // Si no hay análisis de IA aún, usar valores por defecto
+  const category = chat?.aiAnalysis?.category || 'valuation';
+  const suggestedReply = chat?.suggestedReply || '';
+
+  // Estado para el mensaje
+  const [responseBody, setResponseBody] = useState(suggestedReply);
+  const [isSending, setIsSending] = useState(false);
+
+  // Actualizar default si cambia la sugerencia y no hemos escrito nada
+  useEffect(() => {
+    if (suggestedReply && !responseBody) {
+      setResponseBody(suggestedReply);
+    }
+  }, [suggestedReply]);
+
+  const handleSend = async () => {
+    if (!responseBody.trim()) return;
+    if (!chat?.conversationId || !selectedPhone?.id) {
+      alert('Error: Datos de conversación incompletos');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      // URL del Webhook de n8n
+      let WEBHOOK_URL = import.meta.env.VITE_N8N_OUTBOUND_WEBHOOK || '';
+
+      // En desarrollo, usar el proxy para evitar CORS si es la URL de production
+      if (import.meta.env.DEV && WEBHOOK_URL.includes('https://n8n-t.intelekta.ai/webhook')) {
+        WEBHOOK_URL = WEBHOOK_URL.replace('https://n8n-t.intelekta.ai/webhook', '/api/n8n');
+      }
+
+      if (!WEBHOOK_URL) {
+        alert('Error: Webhook de n8n no configurado. Verifica VITE_N8N_OUTBOUND_WEBHOOK en .env');
+        setIsSending(false);
+        return;
+      }
+
+      const payload = {
+        conversation_id: chat.conversationId,
+        phone_id: selectedPhone.id,
+        to_number: chat.contactNumber,
+        from_number: selectedPhone.phone_number,
+        body: responseBody,
+        direction: 'outbound'
+      };
+
+      // Enviar a n8n
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error del webhook: ${response.status}`);
+      }
+
+      // Optimistic update: Guardar directamente en Supabase para feedback inmediato
+      await saveOutboundMessage({
+        conversationId: chat.conversationId,
+        phoneId: selectedPhone.id,
+        toNumber: chat.contactNumber,
+        fromNumber: selectedPhone.phone_number,
+        body: responseBody
+      });
+
+      // Limpiar y actualizar UI
+      setResponseBody('');
+      setChatMessages(prev => [...prev, {
+        id: 'temp-' + Date.now(),
+        conversation_id: chat.conversationId,
+        body: responseBody,
+        direction: 'outbound',
+        created_at: new Date().toISOString(),
+        status: 'sent'
+      }]);
+
+      console.log('Mensaje enviado exitosamente');
+
+    } catch (error) {
+      console.error('Error enviando mensaje:', error);
+      alert('Error enviando mensaje: ' + error.message);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <div className={`flex-shrink-0 p-3 lg:p-5 pt-2 border-t z-20 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-gray-100 bg-white'}`}>
+      <div className="flex items-center justify-between mb-2 lg:mb-3">
+        <p className={`text-[10px] uppercase font-bold flex items-center gap-2 ${theme.textMuted}`}>
+          <MessageCircle size={12} /> Borrador de Respuesta
+        </p>
+        {suggestedReply.includes('Cita') && (
+          <span className="text-[9px] text-green-600 font-bold flex items-center gap-1 bg-green-100 px-2 py-0.5 rounded-full">
+            <Calendar size={10} /> AGENDADO
+          </span>
+        )}
+      </div>
+
+      <div className={`rounded-xl border shadow-inner overflow-hidden flex flex-col ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-200'}`}>
+        <textarea
+          className={`w-full p-3 lg:p-4 bg-transparent border-none outline-none text-sm resize-none font-medium leading-relaxed overflow-y-auto custom-scrollbar h-20 lg:h-40 ${theme.text}`}
+          value={responseBody}
+          onChange={(e) => setResponseBody(e.target.value)}
+          placeholder="Escribe tu respuesta aquí..."
+          disabled={isSending}
+        />
+        <div className={`p-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-200'} bg-opacity-50 flex justify-end`}>
+          <button
+            onClick={handleSend}
+            disabled={isSending || !responseBody.trim()}
+            className={`py-2 px-4 lg:px-6 rounded-lg font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-2 text-white ${isSending ? 'opacity-50 cursor-not-allowed' : ''} ${category === 'inquiry'
+              ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-blue-500/20'
+              : 'bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-emerald-500/20'
+              }`}>
+            {isSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            {isSending ? 'Enviando...' : 'Enviar'}
+          </button>
         </div>
       </div>
     </div>
