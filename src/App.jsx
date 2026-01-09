@@ -585,8 +585,89 @@ const App = () => {
   // --- Componente de Editor de Respuesta (Reutilizable) ---
   const ReplyEditor = ({ chat }) => {
     // Si no hay análisis de IA aún, usar valores por defecto
-    const category = chat.aiAnalysis?.category || 'valuation';
-    const suggestedReply = chat.suggestedReply || '';
+    const category = chat?.aiAnalysis?.category || 'valuation';
+    const suggestedReply = chat?.suggestedReply || '';
+
+    // Estado para el mensaje
+    const [responseBody, setResponseBody] = useState(suggestedReply);
+    const [isSending, setIsSending] = useState(false);
+
+    // Actualizar default si cambia la sugerencia y no hemos escrito nada
+    useEffect(() => {
+      if (suggestedReply && !responseBody) {
+        setResponseBody(suggestedReply);
+      }
+    }, [suggestedReply]);
+
+    const handleSend = async () => {
+      if (!responseBody.trim()) return;
+      if (!chat?.conversationId || !selectedPhone?.id) {
+        alert('Error: Datos de conversación incompletos');
+        return;
+      }
+
+      setIsSending(true);
+      try {
+        // URL del Webhook de n8n (desde variable de entorno)
+        const WEBHOOK_URL = import.meta.env.VITE_N8N_OUTBOUND_WEBHOOK || '';
+
+        if (!WEBHOOK_URL) {
+          alert('Error: Webhook de n8n no configurado. Verifica VITE_N8N_OUTBOUND_WEBHOOK en .env');
+          setIsSending(false);
+          return;
+        }
+
+        const payload = {
+          conversation_id: chat.conversationId,
+          phone_id: selectedPhone.id,
+          to_number: chat.contactNumber,
+          from_number: selectedPhone.phone_number,
+          body: responseBody,
+          direction: 'outbound'
+        };
+
+        console.log('Enviando mensaje a n8n:', payload);
+
+        // Enviar a n8n
+        const response = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error del webhook: ${response.status}`);
+        }
+
+        // Optimistic update: Guardar directamente en Supabase para feedback inmediato
+        await saveOutboundMessage({
+          conversationId: chat.conversationId,
+          phoneId: selectedPhone.id,
+          toNumber: chat.contactNumber,
+          fromNumber: selectedPhone.phone_number,
+          body: responseBody
+        });
+
+        // Limpiar y actualizar UI
+        setResponseBody('');
+        setChatMessages(prev => [...prev, {
+          id: 'temp-' + Date.now(),
+          conversation_id: chat.conversationId,
+          body: responseBody,
+          direction: 'outbound',
+          created_at: new Date().toISOString(),
+          status: 'sent'
+        }]);
+
+        console.log('Mensaje enviado exitosamente');
+
+      } catch (error) {
+        console.error('Error enviando mensaje:', error);
+        alert('Error enviando mensaje: ' + error.message);
+      } finally {
+        setIsSending(false);
+      }
+    };
 
     return (
       <div className={`flex-shrink-0 p-3 lg:p-5 pt-2 border-t z-20 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-gray-100 bg-white'}`}>
@@ -604,21 +685,28 @@ const App = () => {
         <div className={`rounded-xl border shadow-inner overflow-hidden flex flex-col ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-200'}`}>
           <textarea
             className={`w-full p-3 lg:p-4 bg-transparent border-none outline-none text-sm resize-none font-medium leading-relaxed custom-scrollbar h-20 lg:h-40 ${theme.text}`}
-            defaultValue={suggestedReply}
+            value={responseBody}
+            onChange={(e) => setResponseBody(e.target.value)}
             placeholder="Escribe tu respuesta aquí..."
+            disabled={isSending}
           />
           <div className={`p-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-200'} bg-opacity-50 flex justify-end`}>
-            <button className={`py-2 px-4 lg:px-6 rounded-lg font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-2 text-white ${category === 'inquiry'
-              ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-blue-500/20'
-              : 'bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-emerald-500/20'
-              }`}>
-              <Send size={14} /> Enviar
+            <button
+              onClick={handleSend}
+              disabled={isSending || !responseBody.trim()}
+              className={`py-2 px-4 lg:px-6 rounded-lg font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-2 text-white ${isSending ? 'opacity-50 cursor-not-allowed' : ''} ${category === 'inquiry'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-blue-500/20'
+                : 'bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-emerald-500/20'
+                }`}>
+              {isSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {isSending ? 'Enviando...' : 'Enviar'}
             </button>
           </div>
         </div>
       </div>
     );
   };
+
 
   const getContainerStyle = () => {
     switch (simulatedDevice) {

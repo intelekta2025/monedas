@@ -1,0 +1,210 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "webhook-outbound",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -96,
+                7200
+            ],
+            "id": "outbound-webhook-001",
+            "name": "Webhook Outbound",
+            "webhookId": "0cb8e9ef-5c6a-479e-85ed-8e79f87f5b12"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Normalizar datos del payload del frontend\nconst input = items[0].json;\n\nreturn [{\n  json: {\n    conversation_id: input.conversation_id,\n    phone_id: input.phone_id,\n    to_number: input.to_number,\n    from_number: input.from_number,\n    body: input.body,\n    direction: 'outbound'\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                128,
+                7200
+            ],
+            "id": "outbound-normalizer-001",
+            "name": "Normalizar Outbound"
+        },
+        {
+            "parameters": {
+                "from": "={{ $json.from_number }}",
+                "to": "={{ $json.to_number }}",
+                "toWhatsapp": true,
+                "message": "={{ $json.body }}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.twilio",
+            "typeVersion": 1,
+            "position": [
+                352,
+                7200
+            ],
+            "id": "outbound-twilio-001",
+            "name": "Enviar WhatsApp",
+            "credentials": {
+                "twilioApi": {
+                    "id": "SMWUen6xdR5UGCnv",
+                    "name": "Twilio account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "tableId": "whatsapp_messages",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "conversation_id",
+                            "fieldValue": "={{ $('Normalizar Outbound').item.json.conversation_id }}"
+                        },
+                        {
+                            "fieldId": "phone_id",
+                            "fieldValue": "={{ $('Normalizar Outbound').item.json.phone_id }}"
+                        },
+                        {
+                            "fieldId": "message_sid",
+                            "fieldValue": "={{ $('Enviar WhatsApp').item.json.sid }}"
+                        },
+                        {
+                            "fieldId": "from_number",
+                            "fieldValue": "={{ $('Normalizar Outbound').item.json.from_number }}"
+                        },
+                        {
+                            "fieldId": "to_number",
+                            "fieldValue": "={{ $('Normalizar Outbound').item.json.to_number }}"
+                        },
+                        {
+                            "fieldId": "body",
+                            "fieldValue": "={{ $('Normalizar Outbound').item.json.body }}"
+                        },
+                        {
+                            "fieldId": "direction",
+                            "fieldValue": "outbound"
+                        },
+                        {
+                            "fieldId": "status",
+                            "fieldValue": "sent"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                576,
+                7200
+            ],
+            "id": "outbound-save-001",
+            "name": "Guardar Outbound",
+            "credentials": {
+                "supabaseApi": {
+                    "id": "sns5T6gJRSRwDVB5",
+                    "name": "Supabase Monedas"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "PATCH",
+                "url": "=https://xuylkjkgfztfelsseyvh.supabase.co/rest/v1/whatsapp_conversations?id=eq.{{ $('Normalizar Outbound').item.json.conversation_id }}",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "supabaseApi",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"last_message\": \"{{ $('Normalizar Outbound').item.json.body }}\",\n  \"last_message_at\": \"{{ $now.toISO() }}\"\n}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.3,
+            "position": [
+                800,
+                7200
+            ],
+            "id": "outbound-update-conv-001",
+            "name": "Actualizar Conversación Outbound",
+            "credentials": {
+                "supabaseApi": {
+                    "id": "sns5T6gJRSRwDVB5",
+                    "name": "Supabase Monedas"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ success: true, message_sid: $('Enviar WhatsApp').item.json.sid }) }}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                1024,
+                7200
+            ],
+            "id": "outbound-response-001",
+            "name": "Responder OK"
+        }
+    ],
+    "connections": {
+        "Webhook Outbound": {
+            "main": [
+                [
+                    {
+                        "node": "Normalizar Outbound",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normalizar Outbound": {
+            "main": [
+                [
+                    {
+                        "node": "Enviar WhatsApp",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Enviar WhatsApp": {
+            "main": [
+                [
+                    {
+                        "node": "Guardar Outbound",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Guardar Outbound": {
+            "main": [
+                [
+                    {
+                        "node": "Actualizar Conversación Outbound",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Actualizar Conversación Outbound": {
+            "main": [
+                [
+                    {
+                        "node": "Responder OK",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
