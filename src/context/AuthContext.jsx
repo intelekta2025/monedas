@@ -31,9 +31,18 @@ export const AuthProvider = ({ children }) => {
         const initSession = async () => {
             try {
                 console.log('AuthContext: Iniciando sesión...');
-                // Timeout de 30 segundos para evitar quedarse cargando infinitamente
+
+                // Verificar si hay tokens en localStorage
+                const hasTokens = Object.keys(localStorage).some(key => key.startsWith('sb-'));
+                if (!hasTokens) {
+                    console.log('AuthContext: No hay tokens, mostrando login');
+                    setLoading(false);
+                    return;
+                }
+
+                // Timeout de 5 segundos (si hay tokens, intentar validarlos)
                 const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Timeout: Supabase no respondió')), 30000)
+                    setTimeout(() => reject(new Error('Timeout: Supabase no respondió')), 5000)
                 );
 
                 const session = await Promise.race([getSession(), timeoutPromise]);
@@ -81,12 +90,29 @@ export const AuthProvider = ({ children }) => {
     // Logout
     const signOut = async () => {
         console.log('AuthContext: Iniciando cierre de sesión...');
-        try {
-            await authSignOut();
-            console.log('AuthContext: Sesión cerrada en Supabase');
-        } catch (error) {
-            console.error('AuthContext: Error cerrando sesión en Supabase (ignorando):', error);
-        }
+
+        // Timeout de 3 segundos para el signOut de Supabase
+        const signOutWithTimeout = new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                console.log('AuthContext: Timeout en signOut, continuando...');
+                resolve();
+            }, 3000);
+
+            authSignOut()
+                .then(() => {
+                    clearTimeout(timeout);
+                    console.log('AuthContext: Sesión cerrada en Supabase');
+                    resolve();
+                })
+                .catch((error) => {
+                    clearTimeout(timeout);
+                    console.error('AuthContext: Error cerrando sesión (ignorando):', error);
+                    resolve();
+                });
+        });
+
+        await signOutWithTimeout;
+
         // Siempre limpiar estado local, sin importar el resultado de Supabase
         setUser(null);
         setProfile(null);
@@ -98,7 +124,7 @@ export const AuthProvider = ({ children }) => {
                 localStorage.removeItem(key);
             }
         });
-        console.log('AuthContext: Estado local limpiado');
+        console.log('AuthContext: Estado local limpiado, recargando...');
         // Forzar recarga de la página para mostrar login
         window.location.reload();
     };
