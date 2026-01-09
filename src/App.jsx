@@ -632,17 +632,6 @@ const App = () => {
           direction: 'outbound'
         };
 
-        console.log('--- DEBUG OUTBOUND MSG ---');
-        console.log('Conversation ID:', chat.conversationId);
-        console.log('Phone ID:', selectedPhone.id);
-        console.log('To:', chat.contactNumber);
-        console.log('From:', selectedPhone.phone_number);
-        console.log('Body:', responseBody);
-        console.log('Full Payload:', payload);
-        console.log('--------------------------');
-
-        console.log('Enviando mensaje a n8n:', payload);
-
         // Enviar a n8n
         const response = await fetch(WEBHOOK_URL, {
           method: 'POST',
