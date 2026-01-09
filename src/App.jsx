@@ -3,7 +3,7 @@ import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
 import { getWhatsappPhones } from './services/whatsappService';
 import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
-import { saveOutboundMessage } from './services/outboundService';
+
 import {
   MessageCircle,
   Trash2,
@@ -1047,16 +1047,10 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages }
         throw new Error(`Error del webhook: ${response.status}`);
       }
 
-      // Optimistic update: Guardar directamente en Supabase para feedback inmediato
-      await saveOutboundMessage({
-        conversationId: chat.conversationId,
-        phoneId: selectedPhone.id,
-        toNumber: chat.contactNumber,
-        fromNumber: selectedPhone.phone_number,
-        body: responseBody
-      });
+      // NO Guardar en Supabase desde aquí, ya que el n8n se encarga de eso.
+      // Evitamos duplicados.
 
-      // Limpiar y actualizar UI
+      // Limpiar y actualizar UI (Optimistic Update)
       setResponseBody('');
       setChatMessages(prev => [...prev, {
         id: 'temp-' + Date.now(),
