@@ -11,7 +11,7 @@ export default defineConfig({
         target: 'https://n8n-t.intelekta.ai',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/n8n/, '/webhook'),
-        secure: true
+        secure: false
       }
     }
   }

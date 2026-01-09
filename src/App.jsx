@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
 import { getWhatsappPhones } from './services/whatsappService';
 import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
+import { saveOutboundMessage } from './services/outboundService';
 import {
   MessageCircle,
   Trash2,
@@ -608,8 +609,13 @@ const App = () => {
 
       setIsSending(true);
       try {
-        // URL del Webhook de n8n (desde variable de entorno)
-        const WEBHOOK_URL = import.meta.env.VITE_N8N_OUTBOUND_WEBHOOK || '';
+        // URL del Webhook de n8n
+        let WEBHOOK_URL = import.meta.env.VITE_N8N_OUTBOUND_WEBHOOK || '';
+
+        // En desarrollo, usar el proxy para evitar CORS si es la URL de production
+        if (import.meta.env.DEV && WEBHOOK_URL.includes('https://n8n-t.intelekta.ai/webhook')) {
+          WEBHOOK_URL = WEBHOOK_URL.replace('https://n8n-t.intelekta.ai/webhook', '/api/n8n');
+        }
 
         if (!WEBHOOK_URL) {
           alert('Error: Webhook de n8n no configurado. Verifica VITE_N8N_OUTBOUND_WEBHOOK en .env');
@@ -625,6 +631,15 @@ const App = () => {
           body: responseBody,
           direction: 'outbound'
         };
+
+        console.log('--- DEBUG OUTBOUND MSG ---');
+        console.log('Conversation ID:', chat.conversationId);
+        console.log('Phone ID:', selectedPhone.id);
+        console.log('To:', chat.contactNumber);
+        console.log('From:', selectedPhone.phone_number);
+        console.log('Body:', responseBody);
+        console.log('Full Payload:', payload);
+        console.log('--------------------------');
 
         console.log('Enviando mensaje a n8n:', payload);
 
