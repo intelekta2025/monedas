@@ -173,6 +173,7 @@ const App = () => {
   const [feedback, setFeedback] = useState(null);
 
   const [simulatedDevice, setSimulatedDevice] = useState('desktop');
+  const [showDeviceBar, setShowDeviceBar] = useState(false); // Solo para testing, oculto por defecto
   const [currentView, setCurrentView] = useState('main'); // 'main' | 'settings'
   const chatContainerRef = useRef(null);
   const currentChatIdRef = useRef(null); // Para evitar race conditions en carga de mensajes
@@ -194,6 +195,27 @@ const App = () => {
   const [showClosedConversations, setShowClosedConversations] = useState(false);
   const [conversationAnalyses, setConversationAnalyses] = useState([]); // Análisis de IA de la conversación
   const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0); // Índice para carrusel
+
+  // Detección automática del dispositivo basada en el ancho de ventana
+  useEffect(() => {
+    const detectDevice = () => {
+      const width = window.innerWidth;
+      if (width < 480) {
+        setSimulatedDevice('mobile');
+      } else if (width < 1024) {
+        setSimulatedDevice('tablet');
+      } else {
+        setSimulatedDevice('desktop');
+      }
+    };
+
+    // Detectar al cargar
+    detectDevice();
+
+    // Detectar cuando cambia el tamaño de la ventana
+    window.addEventListener('resize', detectDevice);
+    return () => window.removeEventListener('resize', detectDevice);
+  }, []);
 
   // Helper para fechas
   const getTodayDate = () => new Date().toISOString().split('T')[0];
@@ -643,16 +665,18 @@ const App = () => {
   return (
     <div className="flex flex-col h-screen bg-neutral-900 font-sans overflow-hidden">
 
-      {/* BARRA DE SIMULACIÓN */}
-      <div className="flex items-center justify-center gap-4 bg-black/80 text-slate-400 py-2 border-b border-white/10 z-50 flex-shrink-0">
-        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Vista Previa:</span>
-        <button onClick={() => setSimulatedDevice('mobile')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'mobile' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'hover:bg-white/10'}`}><Smartphone size={14} /> Celular</button>
-        <button onClick={() => setSimulatedDevice('tablet')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'tablet' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'hover:bg-white/10'}`}><Tablet size={14} /> Tablet</button>
-        <button onClick={() => setSimulatedDevice('desktop')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'desktop' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'hover:bg-white/10'}`}><Monitor size={14} /> PC</button>
-      </div>
+      {/* BARRA DE SIMULACIÓN (Solo visible en modo testing) */}
+      {showDeviceBar && (
+        <div className="flex items-center justify-center gap-4 bg-black/80 text-slate-400 py-2 border-b border-white/10 z-50 flex-shrink-0">
+          <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Vista Previa:</span>
+          <button onClick={() => setSimulatedDevice('mobile')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'mobile' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'hover:bg-white/10'}`}><Smartphone size={14} /> Celular</button>
+          <button onClick={() => setSimulatedDevice('tablet')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'tablet' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'hover:bg-white/10'}`}><Tablet size={14} /> Tablet</button>
+          <button onClick={() => setSimulatedDevice('desktop')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'desktop' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'hover:bg-white/10'}`}><Monitor size={14} /> PC</button>
+        </div>
+      )}
 
-      <div className="flex-1 flex justify-center items-center overflow-hidden bg-neutral-800/50 backdrop-blur-sm relative">
-        <div className={`${getContainerStyle()} overflow-hidden flex flex-col relative transition-all duration-500 bg-black`}>
+      <div className="flex-1 flex overflow-hidden relative">
+        <div className={`w-full h-full overflow-hidden flex flex-col relative bg-black`}>
 
           <div className={`flex flex-col h-full ${theme.bg} ${theme.text} w-full transition-colors duration-300`}>
 
