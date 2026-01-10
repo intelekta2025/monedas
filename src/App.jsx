@@ -3,7 +3,6 @@ import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
 import { getWhatsappPhones } from './services/whatsappService';
 import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToAllMessagesByPhone, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
-import { forceSessionRefresh, forceLogout, surgicalConnectionReset } from './services/supabase';
 
 import {
   MessageCircle,
@@ -350,13 +349,12 @@ const App = () => {
           console.log('App: Conversaciones cargadas:', convs);
         }
         setConversations(convs || []);
-        // Solo limpiar selección en carga inicial
-        if (!isPolling) {
-          setSelectedChat(null);
-          setSelectedConversation(null);
-          setChatMessages([]);
-          setConnectionError(null);
+        // Solo limpiar selección en carga inicial SIN ERROR
+        if (!isPolling && convs && convs.length > 0) {
+          setConnectionError(null); // Limpiar error si cargó exitosamente
         }
+        // NO limpiamos selectedChat ni setChatMessages en caso de error
+        // Mantenemos datos cacheados visibles
       } catch (err) {
         if (err.message === 'EffectCancelled' || err.name === 'AbortError') {
           // Ignorar errores de cancelación
@@ -366,7 +364,9 @@ const App = () => {
         if (!isPolling) {
           // Solo mostrar error si no es un aborto intencional
           if (err.name !== 'AbortError') {
-            setConnectionError('Sesión inestable. Por favor reinicia sesión.');
+            // Estilo WhatsApp: mensaje amigable, no alarmante
+            setConnectionError('Esperando red...');
+            // NO limpiamos las conversaciones, mostramos datos cacheados
           }
         }
       } finally {
@@ -1019,18 +1019,13 @@ const App = () => {
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 custom-scrollbar">
-                    {/* Indicador de error de conexión */}
+                    {/* Banner de conexión estilo WhatsApp */}
                     {connectionError && (
-                      <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200'} text-center`}>
-                        <AlertCircle size={32} className="text-red-400 mx-auto mb-2" />
-                        <p className="text-red-400 text-sm font-medium mb-1">Error de conexión</p>
-                        <p className={`text-xs ${theme.textMuted} mb-3`}>{connectionError}</p>
-                        <button
-                          onClick={() => window.location.reload()}
-                          className="w-full mb-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors shadow-lg"
-                        >
-                          Reintentar Conexión
-                        </button>
+                      <div className={`p-2 rounded-lg border ${isDarkMode ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-yellow-50 border-yellow-200'} text-center mb-2`}>
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader2 size={14} className="animate-spin text-yellow-500" />
+                          <p className="text-yellow-600 dark:text-yellow-500 text-xs font-medium">{connectionError}</p>
+                        </div>
                       </div>
                     )}
 
@@ -1149,14 +1144,6 @@ const App = () => {
                                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-[600] shadow hover:bg-emerald-500 transition-colors flex items-center gap-2"
                               >
                                 <RefreshCw size={14} /> Reintentar
-                              </button>
-
-                              <button
-                                onClick={surgicalConnectionReset}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 text-xs rounded-lg transition-colors border border-yellow-500/30"
-                                title="Intenta reparar la conexión sin perder tu sesión"
-                              >
-                                <RefreshCw size={14} /> Reparar Conexión
                               </button>
 
                               <button

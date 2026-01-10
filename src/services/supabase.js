@@ -11,9 +11,71 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false // Evitar chequeos de URL innecesarios al enfocar
+        detectSessionInUrl: false, // Evitar chequeos de URL innecesarios al enfocar
+        // NUEVO: Configuración más agresiva de refresh
+        storage: window.localStorage,
+        storageKey: 'sb-xuylkjkgfztfelsseyvh-auth-token',
     }
 });
+
+/**
+ * Heartbeat de sesión: Verifica y refresca la sesión cada 2 minutos
+ * Previene que la sesión se vuelva "zombie" después de inactividad
+ */
+let heartbeatInterval = null;
+
+export const startSessionHeartbeat = () => {
+    // Limpiar intervalo anterior si existe
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+    }
+
+    console.log('🫀 [HEARTBEAT] Iniciando heartbeat de sesión (cada 2 minutos)');
+
+    heartbeatInterval = setInterval(async () => {
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+
+            if (error) {
+                console.error('🫀 [HEARTBEAT] Error obteniendo sesión:', error);
+                return;
+            }
+
+            if (!session) {
+                console.warn('🫀 [HEARTBEAT] No hay sesión activa');
+                return;
+            }
+
+            // Verificar si el token está próximo a expirar (menos de 5 minutos)
+            const expiresAt = session.expires_at;
+            const now = Math.floor(Date.now() / 1000);
+            const timeUntilExpiry = expiresAt - now;
+
+            if (timeUntilExpiry < 300) { // Menos de 5 minutos
+                console.log('🫀 [HEARTBEAT] Token próximo a expirar, refrescando...');
+                const { error: refreshError } = await supabase.auth.refreshSession();
+
+                if (refreshError) {
+                    console.error('🫀 [HEARTBEAT] Error refrescando sesión:', refreshError);
+                } else {
+                    console.log('🫀 [HEARTBEAT] ✅ Sesión refrescada exitosamente');
+                }
+            } else {
+                console.log(`🫀 [HEARTBEAT] ✅ Sesión válida (expira en ${Math.floor(timeUntilExpiry / 60)} minutos)`);
+            }
+        } catch (e) {
+            console.error('🫀 [HEARTBEAT] Error en heartbeat:', e);
+        }
+    }, 2 * 60 * 1000); // Cada 2 minutos
+};
+
+export const stopSessionHeartbeat = () => {
+    if (heartbeatInterval) {
+        console.log('🫀 [HEARTBEAT] Deteniendo heartbeat de sesión');
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+    }
+};
 
 /**
  * Forzar refresh de la sesión de Supabase
