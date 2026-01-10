@@ -396,6 +396,8 @@ const App = () => {
   };
 
   const isMobileView = simulatedDevice === 'mobile';
+  const isTabletView = simulatedDevice === 'tablet';
+  const isCompactView = isMobileView || isTabletView; // Móvil o Tablet: panel de análisis como overlay
 
   const handleChatSelect = async (chat) => {
     console.log('handleChatSelect: Seleccionando chat:', chat);
@@ -732,8 +734,8 @@ const App = () => {
 
                 {/* COLUMNA 1: LISTA */}
                 <div className={`
-                ${isMobileView && selectedChat ? 'hidden' : 'flex'} 
-                ${isMobileView ? 'w-full' : 'w-80'} flex-shrink-0 flex-col 
+                ${isCompactView && selectedChat ? 'hidden' : 'flex'} 
+                ${isMobileView ? 'w-full' : isTabletView ? 'w-[280px]' : 'w-80'} flex-shrink-0 flex-col 
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} transition-colors duration-300
               `}>
                   <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
@@ -829,8 +831,8 @@ const App = () => {
 
                 {/* COLUMNA 2: CHAT */}
                 <div className={`
-                ${isMobileView ? (selectedChat && !showMobileInfo ? 'flex' : 'hidden') : 'flex'} 
-                flex-1 flex-col 
+                ${isCompactView ? (selectedChat && !showMobileInfo ? 'flex' : 'hidden') : 'flex'} 
+                ${isMobileView ? 'flex-1' : isTabletView ? 'flex-1' : 'w-[600px]'} flex-col flex-shrink-0
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} overflow-hidden relative transition-colors duration-300 z-10
               `}>
                   {selectedChat ? (
@@ -842,7 +844,7 @@ const App = () => {
                           <div><h3 className={`font-bold text-sm ${theme.text}`}>{selectedChat.name}</h3><p className={`text-[10px] ${theme.textMuted} flex items-center gap-1`}><span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Business</p></div>
                         </div>
                         <div className="flex gap-1">
-                          {isMobileView && (
+                          {isCompactView && (
                             <button
                               onClick={() => setShowMobileInfo(true)}
                               className={`p-2 rounded-lg relative ${conversationAnalyses.length > 0 ? 'text-emerald-500 bg-emerald-500/20' : 'text-emerald-500'} hover:bg-emerald-500/10`}
@@ -970,7 +972,7 @@ const App = () => {
                       </div>
 
                       {/* EDITOR DE RESPUESTA (Aquí para Móvil) */}
-                      {isMobileView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} />}
+                      {isCompactView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} />}
                     </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center opacity-40"><MessageCircle size={64} className="mb-4 text-gray-400" /><p className={`text-sm font-medium ${theme.textMuted}`}>Selecciona una conversación</p></div>
@@ -979,12 +981,12 @@ const App = () => {
 
                 {/* COLUMNA 3: IA */}
                 <div className={`
-                ${isMobileView ? (showMobileInfo ? 'flex absolute inset-0 z-50' : 'hidden') : 'flex'} 
-                ${isMobileView ? 'w-full h-full' : 'w-[450px] flex-shrink-0'} flex-col 
+                ${isCompactView ? (showMobileInfo ? 'flex absolute inset-0 z-50' : 'hidden') : 'flex'} 
+                ${isCompactView ? 'w-full h-full' : 'flex-1'} flex-col 
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} transition-colors duration-300 overflow-hidden
               `}>
-                  {isMobileView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-500">Análisis IA</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
-                  {!isMobileView && <div className={`p-4 border-b ${theme.cardBorder} ${isDarkMode ? 'bg-emerald-900/10' : 'bg-emerald-50'} flex items-center gap-2 flex-shrink-0`}><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-600 uppercase tracking-wider">{selectedChat?.aiAnalysis?.category === 'inquiry' ? 'Intención' : 'Análisis'}</h2></div>}
+                  {isCompactView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-500">Análisis IA</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
+                  {!isCompactView && <div className={`p-4 border-b ${theme.cardBorder} ${isDarkMode ? 'bg-emerald-900/10' : 'bg-emerald-50'} flex items-center gap-2 flex-shrink-0`}><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-600 uppercase tracking-wider">{selectedChat?.aiAnalysis?.category === 'inquiry' ? 'Intención' : 'Análisis'}</h2></div>}
 
                   {selectedChat ? (
                     <>
