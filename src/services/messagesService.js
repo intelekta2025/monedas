@@ -53,7 +53,7 @@ export const getConversation = async (conversationId) => {
 };
 
 // Obtener mensajes de una conversación con sus media
-export const getMessages = async (conversationId) => {
+export const getMessages = async (conversationId, limit = 50) => {
     const { data, error } = await supabase
         .from('whatsapp_messages')
         .select(`
@@ -61,15 +61,17 @@ export const getMessages = async (conversationId) => {
       media:whatsapp_message_media(id, media_index, media_url, media_content_type, ai_analysis)
     `)
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false }) // Obtener los más recientes primero
+        .limit(limit);
 
     if (error) throw error;
-    return data;
+    // Invertir para mostrar cronológicamente (antiguos -> nuevos)
+    return data ? data.reverse() : [];
 };
 
 // Obtener TODOS los mensajes de un cliente (de todas sus conversaciones)
 // status: 'open' para solo abiertas, 'closed' para solo cerradas, null para todas
-export const getMessagesByClient = async (clientId, phoneId, status = null) => {
+export const getMessagesByClient = async (clientId, phoneId, status = null, limit = 50) => {
     // Construir query para conversaciones del cliente
     let query = supabase
         .from('whatsapp_conversations')
@@ -96,10 +98,11 @@ export const getMessagesByClient = async (clientId, phoneId, status = null) => {
       media:whatsapp_message_media(id, media_index, media_url, media_content_type, ai_analysis)
     `)
         .in('conversation_id', conversationIds)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
     if (msgError) throw msgError;
-    return messages;
+    return messages ? messages.reverse() : [];
 };
 
 // Marcar conversación como leída

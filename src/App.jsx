@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
 import { getWhatsappPhones } from './services/whatsappService';
-import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
+import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToMessages, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
+import { forceSessionRefresh, forceLogout, surgicalConnectionReset } from './services/supabase';
 
 import {
   MessageCircle,
@@ -42,7 +43,9 @@ import {
   Phone,
   LogOut,
   XCircle,
-  Archive
+
+  Archive,
+  RefreshCw
 } from 'lucide-react';
 
 // --- COMPONENTE DE LOGIN ---
@@ -312,7 +315,9 @@ const App = () => {
     // Carga inicial
     loadConversations(false);
 
-    // Polling cada 30 segundos para nuevas conversaciones (Inteligente)
+    // POLLING DESACTIVADO - Confiamos en Real-time de Supabase
+    // Descomentar si se necesita como respaldo
+    /*
     const intervalId = setInterval(() => {
       // Solo hacer polling si:
       // 1. Hay teléfono seleccionado
@@ -322,10 +327,11 @@ const App = () => {
       if (selectedPhone?.id && !isPollingConversationsRef.current && document.visibilityState === 'visible' && !connectionError) {
         isPollingConversationsRef.current = true;
         loadConversations(true).catch(() => {
-          isPollingConversationsRef.current = false;
+           isPollingConversationsRef.current = false;
         });
       }
     }, 30000);
+    */
 
     // Suscribirse a cambios en tiempo real (solo para conversaciones abiertas)
     let unsubscribe;
@@ -341,9 +347,8 @@ const App = () => {
       });
     }
 
-    // Limpiar intervalo y suscripción al desmontar
     return () => {
-      clearInterval(intervalId);
+      // clearInterval(intervalId); // POLLING DESACTIVADO
       if (unsubscribe) unsubscribe();
     };
   }, [selectedPhone?.id, showClosedConversations]);
@@ -383,19 +388,78 @@ const App = () => {
     // Carga inicial
     loadMessages();
 
-    // Polling cada 10 segundos para mantener mensajes actualizados
+    // POLLING DE MENSAJES DESACTIVADO - Confiamos en Real-time
+    // Descomentar si se necesita como respaldo
+    /*
     const intervalId = setInterval(() => {
       if (selectedConversation?.client_id && selectedPhone?.id) {
         loadMessages();
       }
     }, 10000);
+    */
 
     // Limpiar intervalo al cambiar de cliente o desmontar
-    return () => clearInterval(intervalId);
+    return () => {
+      // clearInterval(intervalId); // POLLING DESACTIVADO
+    };
   }, [selectedConversation?.client_id, selectedPhone?.id, showClosedConversations]);
+
+  // --- Wake-Up Handler: Recuperar conexión al volver a la pestaña ---
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('👁️ Pestaña visible: Verificando salud de conexión...');
+        // Intentar un refresh suave para "despertar" la conexión si estaba dormida
+        // No forzamos reload, solo reconexión de sesión
+        try {
+          await forceSessionRefresh();
+        } catch (e) {
+          console.warn('Error en Wake-Up refresh:', e);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // --- Real-time: Suscripción a mensajes nuevos ---
+
 
   // Inicializar sin chat seleccionado (limpio)
   const [selectedChat, setSelectedChat] = useState(null);
+
+  // --- Real-time: Suscripción a mensajes nuevos ---
+  useEffect(() => {
+    let unsubscribe = null;
+
+    if (selectedChat?.conversationId) {
+      console.log('Iniciando suscripción a mensajes para:', selectedChat.conversationId);
+      unsubscribe = subscribeToMessages(selectedChat.conversationId, (newMessage) => {
+        console.log('Nuevo mensaje recibido (Real-time):', newMessage);
+        setChatMessages(prev => {
+          // Evitar duplicados
+          if (prev.find(m => m.id === newMessage.id)) return prev;
+          return [...prev, newMessage];
+        });
+
+        // Scroll al fondo si es mensaje nuevo
+        if (chatContainerRef.current) {
+          // Pequeño delay para asegurar render
+          setTimeout(() => {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+          }, 100);
+        }
+      });
+    }
+
+    return () => {
+      if (unsubscribe) {
+        console.log('Cerrando suscripción mensajes');
+        unsubscribe();
+      }
+    };
+  }, [selectedChat?.conversationId]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -441,9 +505,9 @@ const App = () => {
 
       console.log('handleChatSelect: Cargando mensajes para conversación:', chat.conversationId);
       try {
-        // Timeout de 15 segundos para evitar carga infinita
+        // Timeout de 4 segundos (Fail Fast & Recover)
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Tiempo de espera agotado')), 15000)
+          setTimeout(() => reject(new Error('Tiempo de espera agotado')), 4000)
         );
 
         // Race entre carga y timeout
@@ -491,6 +555,27 @@ const App = () => {
         if (currentChatIdRef.current === chat.conversationId) {
           console.error('Error cargando mensajes:', err);
 
+          // Intentar recuperar la sesión automáticamente
+          console.log('Intentando recuperar sesión...');
+          const refreshed = await forceSessionRefresh();
+
+          if (refreshed) {
+            // Reintentar carga de mensajes después del refresh
+            console.log('Sesión recuperada, reintentando carga...');
+            try {
+              const retryMsgs = await getMessages(chat.conversationId);
+              if (currentChatIdRef.current === chat.conversationId) {
+                setChatMessages(retryMsgs || []);
+                setLoadError(null);
+                setMessagesLoading(false);
+                return; // Éxito en el reintento
+              }
+            } catch (retryErr) {
+              console.error('Error en reintento:', retryErr);
+            }
+          }
+
+          // Si el refresh falló o el reintento falló, mostrar error
           let friendlyError = 'Error cargando mensajes';
           if (err.message === 'Tiempo de espera agotado') {
             friendlyError = 'La conexión está lenta o inestable';
@@ -512,7 +597,7 @@ const App = () => {
       setChatMessages([]);
     }
 
-  };
+  }; // This closes handleChatSelect
 
   const handleBackToList = () => {
     setSelectedChat(null);
@@ -923,8 +1008,17 @@ const App = () => {
                                 onClick={() => handleChatSelect(selectedChat)}
                                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-[600] shadow hover:bg-emerald-500 transition-colors flex items-center gap-2"
                               >
-                                Reintentar
+                                <RefreshCw size={14} /> Reintentar
                               </button>
+
+                              <button
+                                onClick={surgicalConnectionReset}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 text-xs rounded-lg transition-colors border border-yellow-500/30"
+                                title="Intenta reparar la conexión sin perder tu sesión"
+                              >
+                                <RefreshCw size={14} /> Reparar Conexión
+                              </button>
+
                               <button
                                 onClick={() => window.location.reload()}
                                 className={`px-4 py-2 border ${isDarkMode ? 'border-slate-700 hover:bg-slate-800' : 'border-slate-300 hover:bg-slate-100'} rounded-lg text-sm font-medium transition-colors`}
