@@ -175,6 +175,8 @@ const App = () => {
   const [simulatedDevice, setSimulatedDevice] = useState('desktop');
   const [currentView, setCurrentView] = useState('main'); // 'main' | 'settings'
   const chatContainerRef = useRef(null);
+  const currentChatIdRef = useRef(null); // Para evitar race conditions en carga de mensajes
+  const isPollingConversationsRef = useRef(false); // Para evitar polling apilado
 
   // Estado para teléfonos WhatsApp
   const [whatsappPhones, setWhatsappPhones] = useState([]);
@@ -187,7 +189,8 @@ const App = () => {
   const [conversationsLoading, setConversationsLoading] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
-  const [messagesLoading, setMessagesLoading] = useState(false); // New state
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null); // Estado para errores de carga
   const [showClosedConversations, setShowClosedConversations] = useState(false);
 
   // Helper para fechas
@@ -235,9 +238,17 @@ const App = () => {
         setConversationsLoading(true);
       }
       try {
-        const convs = showClosedConversations
-          ? await getClosedConversations(selectedPhone.id)
-          : await getConversations(selectedPhone.id);
+        // Timeout de 10s para evitar bloqueo inicial
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('TimeoutConversations')), 10000)
+        );
+
+        const fetchPromise = showClosedConversations
+          ? getClosedConversations(selectedPhone.id)
+          : getConversations(selectedPhone.id);
+
+        const convs = await Promise.race([fetchPromise, timeoutPromise]);
+
         if (!isPolling) {
           console.log('App: Conversaciones cargadas:', convs);
         }
@@ -247,12 +258,20 @@ const App = () => {
           setSelectedChat(null);
           setSelectedConversation(null);
           setChatMessages([]);
+          setConnectionError(null);
         }
       } catch (err) {
         console.error('Error cargando conversaciones:', err);
+        if (!isPolling) {
+          setConnectionError('Sesión inestable. Por favor reinicia sesión.');
+        }
       } finally {
         if (!isPolling) {
           setConversationsLoading(false);
+        }
+        // Resetear flag de polling para permitir la siguiente ejecución
+        if (isPolling) {
+          isPollingConversationsRef.current = false;
         }
       }
     };
@@ -260,10 +279,18 @@ const App = () => {
     // Carga inicial
     loadConversations(false);
 
-    // Polling cada 30 segundos para nuevas conversaciones
+    // Polling cada 30 segundos para nuevas conversaciones (Inteligente)
     const intervalId = setInterval(() => {
-      if (selectedPhone?.id) {
-        loadConversations(true);
+      // Solo hacer polling si:
+      // 1. Hay teléfono seleccionado
+      // 2. No se está ejecutando ya una carga (evita apilamiento)
+      // 3. La ventana está visible (ahorra recursos)
+      // 4. No hay error activo de conexión
+      if (selectedPhone?.id && !isPollingConversationsRef.current && document.visibilityState === 'visible' && !connectionError) {
+        isPollingConversationsRef.current = true;
+        loadConversations(true).catch(() => {
+          isPollingConversationsRef.current = false;
+        });
       }
     }, 30000);
 
@@ -334,106 +361,8 @@ const App = () => {
     return () => clearInterval(intervalId);
   }, [selectedConversation?.client_id, selectedPhone?.id, showClosedConversations]);
 
-  const chats = [
-    {
-      id: 1,
-      name: 'Javier (Nieto)',
-      lastMsg: '¡Ahí estaré! Muchas gracias.',
-      time: `${todayStr} 11:05 AM`,
-      date: getTodayDate(),
-      type: 'Oportunidad',
-      priority: 'Alta',
-      avatar: 'JV',
-      history: [
-        { sender: 'user', text: 'Hola, buenos días. Me dieron su contacto porque quería saber si me podrían ayudar a tasar una moneda que me encontré en la casa de mi abuelo.', time: `${todayStr} 09:15 AM` },
-        { sender: 'bot', text: '¡Hola! Buenos días. Con gusto. Para poder darte un estimado, necesitaríamos fotos nítidas de ambos lados de la moneda (frente y dorso) y, si es posible, una foto del canto (el borde).', time: `${todayStr} 09:16 AM` },
-        { sender: 'user', text: 'Dale, ahí les paso. La moneda se ve bastante vieja, es de plata me parece.', time: `${todayStr} 09:25 AM` },
-        { sender: 'user', type: 'image', img: 'https://images.unsplash.com/photo-1584652868574-0669f4292976?auto=format&fit=crop&q=80&w=600', text: 'Adjunto foto 1 (Anverso)', time: `${todayStr} 09:26 AM` },
-        { sender: 'bot', text: 'Gracias por las fotos, Javier. Se ve interesante. A simple vista parece una pieza de 8 reales de la ceca de México, año 1760.', time: `${todayStr} 09:30 AM` },
-        { sender: 'bot', text: '¿Podrías decirnos cuánto pesa en una balanza de cocina? El peso exacto es clave para descartar réplicas, ya que estas piezas son muy buscadas.', time: `${todayStr} 09:30 AM` },
-        { sender: 'user', text: 'Dejenme ver... pesa 26.8 gramos. ¿Es bueno eso?', time: `${todayStr} 09:45 AM` },
-        { sender: 'bot', text: 'Es un peso excelente. El estándar teórico es de 27.07 gramos, pero con el desgaste natural por el tiempo, 26.8g está dentro del rango de una pieza auténtica.', time: `${todayStr} 09:48 AM` },
-        { sender: 'user', text: '¡Buenísimo! ¿Y cuánto puede valer? Tiene algunos rayones y está un poco negra.', time: `${todayStr} 10:10 AM` },
-        { sender: 'bot', text: 'Un consejo importante: ¡No la limpies! La "pátina" (lo negro) es muy valorada. En estado VF (Very Fine), podría rondar entre 250 y 350 USD.', time: `${todayStr} 10:12 AM` },
-        { sender: 'user', text: 'Uff, ¡bastante más de lo que pensaba! ¿Ustedes compran o solo tasan?', time: `${todayStr} 10:15 AM` },
-        { sender: 'bot', text: 'Nosotros compramos. Tendríamos que verla en persona. Si te interesa, puedes pasar por el local de lunes a viernes de 10 a 18 hs.', time: `${todayStr} 10:18 AM` },
-        { sender: 'user', text: 'Dale, me queda cerca. ¿Mañana a las 11 les queda bien?', time: `${todayStr} 10:50 AM` },
-        { sender: 'bot', text: 'Perfecto, te agendamos con Carlos. ¡Traela protegida en papel, nada de plástico adherente!', time: `${todayStr} 10:55 AM` },
-        { sender: 'user', text: '¡Ahí estaré! Muchas gracias.', time: `${todayStr} 11:05 AM` }
-      ],
-      aiAnalysis: {
-        category: 'valuation',
-        item: '8 Reales "Columnario" 1760, Plata .917, Condición VF.',
-        verdict: 'OPORTUNIDAD'
-      },
-      suggestedReply: 'Conversación cerrada. Cita agendada para mañana 11:00 AM.'
-    },
-    {
-      id: 4,
-      name: 'Roberto (Coleccionista)',
-      lastMsg: 'Busco unas 5 onzas libertad.',
-      time: `${todayStr} 12:30 PM`,
-      date: getTodayDate(),
-      type: 'Consulta',
-      priority: 'Media',
-      avatar: 'RC',
-      history: [
-        { sender: 'user', text: 'Hola, ¿qué tal?', time: `${todayStr} 12:28 PM` },
-        { sender: 'user', text: 'Oigan, ¿de casualidad manejan la Onza Libertad de este año? Busco unas 5.', time: `${todayStr} 12:30 PM` }
-      ],
-      aiAnalysis: {
-        category: 'inquiry',
-        intent: 'Solicitud de Compra',
-        keywords: ['Onza Libertad', '2024', 'Lote x5'],
-        stockStatus: 'Disponible (45 piezas)',
-        verdict: 'VENTA POTENCIAL'
-      },
-      suggestedReply: 'Hola Roberto. Sí las manejamos. Ahorita tenemos la 2024 en $650 MXN c/u. Si te llevas las 5 te las puedo dejar en $640. ¿Te aparto el lote?'
-    },
-    {
-      id: 2,
-      name: 'Juan Pérez',
-      lastMsg: '¿Cuánto vale esta de un peso?',
-      time: '23/10 09:45 AM',
-      date: '2023-10-23',
-      type: 'Basura',
-      priority: 'Baja',
-      avatar: 'JP',
-      history: [
-        { sender: 'user', text: '¿Cuánto vale esta de un peso?', time: '23/10 09:45 AM' },
-        { sender: 'user', type: 'image', img: 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?auto=format&fit=crop&q=80&w=600', text: 'Foto adjunta', time: '23/10 09:45 AM' }
-      ],
-      aiAnalysis: {
-        category: 'valuation',
-        item: 'Peso Morelos 1980 (Industrial)',
-        verdict: 'BASURA'
-      },
-      suggestedReply: 'Hola Juan. Esa pieza es muy común (se acuñaron millones en los 80s) y su material es industrial. Solo tiene valor por kilo para reciclaje. Saludos.'
-    },
-    {
-      id: 3,
-      name: 'María G.',
-      lastMsg: 'Encontré este costal.',
-      time: `${todayStr} 08:30 AM`,
-      date: getTodayDate(),
-      type: 'Oportunidad',
-      priority: 'Media',
-      avatar: 'MG',
-      history: [
-        { sender: 'user', text: 'Encontré este costal en la alacena.', time: `${todayStr} 08:30 AM` },
-        { sender: 'user', type: 'image', img: 'https://images.unsplash.com/photo-1515276422659-19537142fa54?auto=format&fit=crop&q=80&w=600', text: 'Foto del lote', time: `${todayStr} 08:31 AM` }
-      ],
-      aiAnalysis: {
-        category: 'valuation',
-        item: 'Lote Mixto Plata / Cobre',
-        verdict: 'OPORTUNIDAD'
-      },
-      suggestedReply: 'Hola María. Veo piezas interesantes de plata en el lote. Para darle una cotización exacta necesitamos verlas físicamente. ¿Puede traerlas a la tienda?'
-    }
-  ];
-
-  // Inicializar con chat seleccionado
-  const [selectedChat, setSelectedChat] = useState(chats[0]);
+  // Inicializar sin chat seleccionado (limpio)
+  const [selectedChat, setSelectedChat] = useState(null);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -467,24 +396,58 @@ const App = () => {
 
     // Si es una conversación real, cargar los mensajes
     if (chat.conversationId) {
-      // Limpiar mensajes anteriores inmediatamente para evitar confusión visual
+      // Guardar referencia del chat actual
+      currentChatIdRef.current = chat.conversationId;
+
+      // Limpiar mensajes anteriores inmediatamente
       setChatMessages([]);
       setMessagesLoading(true);
+      setLoadError(null); // Resetear error
 
       console.log('handleChatSelect: Cargando mensajes para conversación:', chat.conversationId);
       try {
-        const msgs = await getMessages(chat.conversationId);
-        console.log('handleChatSelect: Mensajes cargados:', msgs);
-        setChatMessages(msgs || []);
+        // Timeout de 15 segundos para evitar carga infinita
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Tiempo de espera agotado')), 15000)
+        );
+
+        // Race entre carga y timeout
+        const msgs = await Promise.race([
+          getMessages(chat.conversationId),
+          timeoutPromise
+        ]);
+
+        // Verificar si seguimos en el mismo chat antes de actualizar
+        if (currentChatIdRef.current === chat.conversationId) {
+          console.log('handleChatSelect: Mensajes cargados:', msgs);
+          setChatMessages(msgs || []);
+          setLoadError(null);
+        } else {
+          console.log('handleChatSelect: Ignorando resultados de chat antiguo');
+        }
       } catch (err) {
-        console.error('Error cargando mensajes:', err);
-        alert('Error cargando mensajes: ' + err.message);
-        setChatMessages([]);
+        // Si cambió el chat, no mostrar error de la carga anterior
+        if (currentChatIdRef.current === chat.conversationId) {
+          console.error('Error cargando mensajes:', err);
+
+          let friendlyError = 'Error cargando mensajes';
+          if (err.message === 'Tiempo de espera agotado') {
+            friendlyError = 'La conexión está lenta o inestable';
+          } else if (err.message.includes('fetch')) {
+            friendlyError = 'Error de conexión a internet';
+          }
+
+          setLoadError(friendlyError);
+          setChatMessages([]);
+        }
       } finally {
-        setMessagesLoading(false);
+        // Solo quitar loading si seguimos en el mismo chat
+        if (currentChatIdRef.current === chat.conversationId) {
+          setMessagesLoading(false);
+        }
       }
     } else {
-      // Para chats demo, limpiar chatMessages
+      // Sin conversación seleccionada
       setChatMessages([]);
     }
 
@@ -770,9 +733,15 @@ const App = () => {
                         <p className={`text-xs ${theme.textMuted} mb-3`}>{connectionError}</p>
                         <button
                           onClick={() => window.location.reload()}
-                          className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors"
+                          className="w-full mb-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors"
                         >
                           Reintentar
+                        </button>
+                        <button
+                          onClick={signOut}
+                          className="w-full px-4 py-2 border border-red-300 hover:bg-red-50 text-red-500 text-xs font-bold rounded-lg transition-colors"
+                        >
+                          Cerrar Sesión (Reset)
                         </button>
                       </div>
                     )}
@@ -866,6 +835,28 @@ const App = () => {
                           <div className="flex flex-col items-center justify-center h-full opacity-50">
                             <Loader2 size={32} className="animate-spin text-emerald-500 mb-2" />
                             <p className={`text-sm ${theme.textMuted}`}>Cargando mensajes...</p>
+                          </div>
+                        ) : loadError ? (
+                          <div className="flex flex-col items-center justify-center h-full gap-4">
+                            <AlertCircle size={48} className="text-red-400" />
+                            <div className="text-center">
+                              <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{loadError}</p>
+                              <p className="text-xs text-slate-500 mt-1">Revisa tu conexión o intenta de nuevo</p>
+                            </div>
+                            <div className="flex gap-3 mt-2">
+                              <button
+                                onClick={() => handleChatSelect(selectedChat)}
+                                className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-[600] shadow hover:bg-emerald-500 transition-colors flex items-center gap-2"
+                              >
+                                Reintentar
+                              </button>
+                              <button
+                                onClick={() => window.location.reload()}
+                                className={`px-4 py-2 border ${isDarkMode ? 'border-slate-700 hover:bg-slate-800' : 'border-slate-300 hover:bg-slate-100'} rounded-lg text-sm font-medium transition-colors`}
+                              >
+                                Recargar Página
+                              </button>
+                            </div>
                           </div>
                         ) : selectedChat.conversationId && chatMessages.length > 0 ? (
                           chatMessages.map((msg, idx) => {
