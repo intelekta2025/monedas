@@ -980,7 +980,7 @@ const App = () => {
                 {/* COLUMNA 3: IA */}
                 <div className={`
                 ${isMobileView ? (showMobileInfo ? 'flex absolute inset-0 z-50' : 'hidden') : 'flex'} 
-                ${isMobileView ? 'w-full h-full' : 'w-96 flex-shrink-0'} flex-col 
+                ${isMobileView ? 'w-full h-full' : 'w-[450px] flex-shrink-0'} flex-col 
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} transition-colors duration-300 overflow-hidden
               `}>
                   {isMobileView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-500">Análisis IA</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
