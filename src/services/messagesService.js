@@ -58,7 +58,7 @@ export const getMessages = async (conversationId) => {
         .from('whatsapp_messages')
         .select(`
       *,
-      media:whatsapp_message_media(id, media_index, media_url, media_content_type)
+      media:whatsapp_message_media(id, media_index, media_url, media_content_type, ai_analysis)
     `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
@@ -93,7 +93,7 @@ export const getMessagesByClient = async (clientId, phoneId, status = null) => {
         .from('whatsapp_messages')
         .select(`
       *,
-      media:whatsapp_message_media(id, media_index, media_url, media_content_type)
+      media:whatsapp_message_media(id, media_index, media_url, media_content_type, ai_analysis)
     `)
         .in('conversation_id', conversationIds)
         .order('created_at', { ascending: true });

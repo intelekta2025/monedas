@@ -192,6 +192,8 @@ const App = () => {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [loadError, setLoadError] = useState(null); // Estado para errores de carga
   const [showClosedConversations, setShowClosedConversations] = useState(false);
+  const [conversationAnalyses, setConversationAnalyses] = useState([]); // Análisis de IA de la conversación
+  const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0); // Índice para carrusel
 
   // Helper para fechas
   const getTodayDate = () => new Date().toISOString().split('T')[0];
@@ -431,6 +433,32 @@ const App = () => {
           console.log('handleChatSelect: Mensajes cargados:', msgs);
           setChatMessages(msgs || []);
           setLoadError(null);
+
+          // Extraer análisis de IA de todos los media
+          const analyses = [];
+          (msgs || []).forEach(msg => {
+            if (msg.media && Array.isArray(msg.media)) {
+              msg.media.forEach(m => {
+                if (m.ai_analysis) {
+                  try {
+                    const parsed = typeof m.ai_analysis === 'string'
+                      ? JSON.parse(m.ai_analysis)
+                      : m.ai_analysis;
+                    analyses.push({
+                      ...parsed,
+                      media_url: m.media_url,
+                      media_id: m.id
+                    });
+                  } catch (e) {
+                    console.error('Error parsing ai_analysis:', e);
+                  }
+                }
+              });
+            }
+          });
+          console.log('handleChatSelect: Análisis extraídos:', analyses);
+          setConversationAnalyses(analyses);
+          setCurrentAnalysisIndex(0);
         } else {
           console.log('handleChatSelect: Ignorando resultados de chat antiguo');
         }
@@ -814,7 +842,19 @@ const App = () => {
                           <div><h3 className={`font-bold text-sm ${theme.text}`}>{selectedChat.name}</h3><p className={`text-[10px] ${theme.textMuted} flex items-center gap-1`}><span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Business</p></div>
                         </div>
                         <div className="flex gap-1">
-                          {isMobileView && <button onClick={() => setShowMobileInfo(true)} className={`p-2 rounded-lg text-emerald-500 hover:bg-emerald-500/10`}><ShieldCheck size={20} /></button>}
+                          {isMobileView && (
+                            <button
+                              onClick={() => setShowMobileInfo(true)}
+                              className={`p-2 rounded-lg relative ${conversationAnalyses.length > 0 ? 'text-emerald-500 bg-emerald-500/20' : 'text-emerald-500'} hover:bg-emerald-500/10`}
+                            >
+                              <ShieldCheck size={20} />
+                              {conversationAnalyses.length > 0 && (
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                  {conversationAnalyses.length}
+                                </span>
+                              )}
+                            </button>
+                          )}
                           {/* Botón cerrar conversación (solo para conversaciones abiertas) */}
                           {selectedChat.conversationId && !showClosedConversations && (
                             <button
@@ -949,16 +989,104 @@ const App = () => {
                   {selectedChat ? (
                     <>
                       <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-0">
-                        {/* Si hay análisis de IA, mostrarlo */}
-                        {selectedChat.aiAnalysis ? (
+                        {/* Si hay análisis de IA en la conversación */}
+                        {conversationAnalyses.length > 0 ? (
                           <div className={`rounded-xl p-5 mb-5 relative overflow-hidden border shadow-sm ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-100'}`}>
-                            <div className={`absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8 rotate-45 opacity-10 ${['Oportunidad', 'Consulta'].includes(selectedChat.type) ? (selectedChat.type === 'Consulta' ? 'bg-blue-500' : 'bg-emerald-500') : 'bg-gray-500'}`}></div>
-                            {selectedChat.aiAnalysis.category === 'inquiry' ? (
-                              <div className="relative z-10"><p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Cliente busca:</p><h3 className={`text-xl font-serif font-bold leading-tight mb-4 flex items-center gap-2 ${theme.text}`}><ShoppingBag size={20} className="text-blue-500" /> {selectedChat.aiAnalysis.intent}</h3><div className="space-y-4"><div><p className={`text-[10px] uppercase font-bold mb-1 ${theme.textMuted}`}>Keywords Detectadas</p><div className="flex flex-wrap gap-1.5">{selectedChat.aiAnalysis.keywords.map((k, i) => (<span key={i} className={`px-2 py-1 rounded-md text-[10px] font-medium border ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>{k}</span>))}</div></div></div></div>
-                            ) : (
-                              <div className="relative z-10"><p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Identificación IA</p>{analysisImage && (<div className={`mb-4 group relative rounded-lg overflow-hidden border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-100'} shadow-sm w-full h-32`}><img src={analysisImage} alt="Pieza analizada" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]"><a href={analysisImage} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors border border-white/20"><Eye size={16} /></a></div></div>)}<h3 className={`text-lg font-serif font-bold leading-tight mb-4 ${theme.text}`}>{selectedChat.aiAnalysis.item}</h3>{analysisImage && (<a href={analysisImage} target="_blank" rel="noopener noreferrer" className={`text-[10px] flex items-center gap-1 hover:underline mb-2 opacity-60 hover:opacity-100 transition-opacity ${theme.accent}`}><ExternalLink size={10} /> Ver imagen original</a>)}</div>
+                            {/* Decorative background */}
+                            <div className={`absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8 rotate-45 opacity-10 ${conversationAnalyses[currentAnalysisIndex]?.business_classification === 'OPORTUNIDAD' ? 'bg-emerald-500' : 'bg-gray-500'}`}></div>
+
+                            {/* Carousel navigation (only if > 1) */}
+                            {conversationAnalyses.length > 1 && (
+                              <div className="flex items-center justify-between mb-4 relative z-20">
+                                <button
+                                  type="button"
+                                  onClick={() => setCurrentAnalysisIndex(prev => prev > 0 ? prev - 1 : conversationAnalyses.length - 1)}
+                                  className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-gray-100 text-gray-500'}`}
+                                >
+                                  <ArrowLeft size={16} />
+                                </button>
+                                <span className={`text-xs font-bold ${theme.textMuted}`}>
+                                  {currentAnalysisIndex + 1} / {conversationAnalyses.length}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setCurrentAnalysisIndex(prev => prev < conversationAnalyses.length - 1 ? prev + 1 : 0)}
+                                  className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-gray-100 text-gray-500'}`}
+                                >
+                                  <ArrowRight size={16} />
+                                </button>
+                              </div>
                             )}
-                            <div className={`pt-4 mt-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex items-center justify-between`}><div><p className={`text-[10px] uppercase font-bold mb-1 ${theme.textMuted}`}>Veredicto IA</p><div className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${selectedChat.type === 'Basura' ? 'bg-gray-400' : (selectedChat.type === 'Consulta' ? 'bg-blue-500' : 'bg-emerald-500')}`}></span><p className={`text-sm font-bold ${selectedChat.type === 'Basura' ? 'text-gray-400' : (selectedChat.type === 'Consulta' ? 'text-blue-500' : 'text-emerald-500')}`}>{selectedChat.aiAnalysis.verdict}</p></div></div><div className="flex flex-col items-end gap-1"><p className={`text-[9px] uppercase font-bold ${theme.textMuted}`}>¿Correcto?</p><div className="flex gap-1"><button onClick={() => setFeedback('up')} className={`p-1.5 rounded transition-colors ${feedback === 'up' ? 'text-green-500 bg-green-500/10' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button><button onClick={() => setFeedback('down')} className={`p-1.5 rounded transition-colors ${feedback === 'down' ? 'text-red-500 bg-red-500/10' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button></div></div></div>
+
+                            {/* Current analysis card content */}
+                            {(() => {
+                              const analysis = conversationAnalyses[currentAnalysisIndex];
+                              if (!analysis) return null;
+                              return (
+                                <div className="relative z-10">
+                                  <p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Identificación IA</p>
+
+                                  {/* Image thumbnail */}
+                                  {analysis.media_url && (
+                                    <div className={`mb-4 group relative rounded-lg overflow-hidden border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-100'} shadow-sm w-full h-32`}>
+                                      <img src={analysis.media_url} alt="Moneda analizada" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
+                                        <a href={analysis.media_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors border border-white/20"><Eye size={16} /></a>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Analysis details grid */}
+                                  <div className="grid grid-cols-2 gap-3 mb-4">
+                                    {analysis.year && (
+                                      <div>
+                                        <p className={`text-[10px] uppercase font-bold ${theme.textMuted}`}>Año</p>
+                                        <p className={`text-lg font-bold ${theme.text}`}>{analysis.year}</p>
+                                      </div>
+                                    )}
+                                    {analysis.material_detected && (
+                                      <div>
+                                        <p className={`text-[10px] uppercase font-bold ${theme.textMuted}`}>Material</p>
+                                        <p className={`text-lg font-bold ${theme.text}`}>{analysis.material_detected}</p>
+                                      </div>
+                                    )}
+                                    {analysis.currency_type && (
+                                      <div>
+                                        <p className={`text-[10px] uppercase font-bold ${theme.textMuted}`}>Moneda</p>
+                                        <p className={`text-sm font-medium ${theme.text}`}>{analysis.currency_type}</p>
+                                      </div>
+                                    )}
+                                    {analysis.confidence && (
+                                      <div>
+                                        <p className={`text-[10px] uppercase font-bold ${theme.textMuted}`}>Confianza</p>
+                                        <p className={`text-sm font-bold ${analysis.confidence >= 80 ? 'text-emerald-500' : analysis.confidence >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>{analysis.confidence}%</p>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Classification badge */}
+                                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold ${analysis.business_classification === 'OPORTUNIDAD' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}`}>
+                                    <Star size={12} fill={analysis.business_classification === 'OPORTUNIDAD' ? 'currentColor' : 'none'} />
+                                    {analysis.business_classification || 'SIN CLASIFICAR'}
+                                  </div>
+
+                                  {/* Reasoning */}
+                                  {analysis.reasoning && (
+                                    <div className={`mt-4 pt-4 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'}`}>
+                                      <p className={`text-[10px] uppercase font-bold mb-2 ${theme.textMuted}`}>Razonamiento</p>
+                                      <p className={`text-xs leading-relaxed ${theme.textMuted}`}>{analysis.reasoning}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+
+                            {/* Feedback buttons */}
+                            <div className={`pt-4 mt-4 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex items-center justify-end gap-1`}>
+                              <p className={`text-[9px] uppercase font-bold mr-2 ${theme.textMuted}`}>¿Correcto?</p>
+                              <button onClick={() => setFeedback('up')} className={`p-1.5 rounded transition-colors ${feedback === 'up' ? 'text-green-500 bg-green-500/10' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button>
+                              <button onClick={() => setFeedback('down')} className={`p-1.5 rounded transition-colors ${feedback === 'down' ? 'text-red-500 bg-red-500/10' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button>
+                            </div>
                           </div>
                         ) : (
                           /* Si no hay análisis de IA, mostrar placeholder */
