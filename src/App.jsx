@@ -206,7 +206,16 @@ const App = () => {
       setPhonesLoading(true);
       setConnectionError(null);
       try {
-        const phones = await getWhatsappPhones();
+        // Timeout de 15 segundos para evitar bloqueo en carga de teléfonos
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('TimeoutPhones')), 15000)
+        );
+
+        const phones = await Promise.race([
+          getWhatsappPhones(),
+          timeoutPromise
+        ]);
+
         console.log('App: Teléfonos cargados:', phones);
         setWhatsappPhones(phones || []);
         setConnectionError(null);

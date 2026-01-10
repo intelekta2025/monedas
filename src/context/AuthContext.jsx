@@ -40,9 +40,9 @@ export const AuthProvider = ({ children }) => {
                     return;
                 }
 
-                // Timeout de 5 segundos (si hay tokens, intentar validarlos)
+                // Timeout de 10 segundos (si hay tokens, intentar validarlos)
                 const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Timeout: Supabase no respondió')), 5000)
+                    setTimeout(() => reject(new Error('Timeout: Supabase no respondió')), 10000)
                 );
 
                 const session = await Promise.race([getSession(), timeoutPromise]);
