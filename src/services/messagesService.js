@@ -5,8 +5,8 @@ import { supabase } from './supabase';
  */
 
 // Obtener todas las conversaciones de un teléfono (con datos del cliente)
-export const getConversations = async (phoneId) => {
-    const { data, error } = await supabase
+export const getConversations = async (phoneId, options = {}) => {
+    const query = supabase
         .from('whatsapp_conversations')
         .select(`
       *,
@@ -16,13 +16,19 @@ export const getConversations = async (phoneId) => {
         .eq('status', 'open')
         .order('last_message_at', { ascending: false });
 
+    if (options.signal) {
+        query.abortSignal(options.signal);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
     return data;
 };
 
 // Obtener conversaciones cerradas
-export const getClosedConversations = async (phoneId, limit = 50) => {
-    const { data, error } = await supabase
+export const getClosedConversations = async (phoneId, limit = 50, options = {}) => {
+    const query = supabase
         .from('whatsapp_conversations')
         .select(`
       *,
@@ -33,6 +39,11 @@ export const getClosedConversations = async (phoneId, limit = 50) => {
         .order('closed_at', { ascending: false })
         .limit(limit);
 
+    if (options.signal) {
+        query.abortSignal(options.signal);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return data;
 };
@@ -53,9 +64,9 @@ export const getConversation = async (conversationId) => {
 };
 
 // Obtener mensajes de una conversación con sus media
-export const getMessages = async (conversationId, limit = 50) => {
+export const getMessages = async (conversationId, limit = 50, options = {}) => {
     try {
-        const { data, error } = await supabase
+        const query = supabase
             .from('whatsapp_messages')
             .select(`
           *,
@@ -64,6 +75,12 @@ export const getMessages = async (conversationId, limit = 50) => {
             .eq('conversation_id', conversationId)
             .order('created_at', { ascending: false }) // Obtener los más recientes primero
             .limit(limit);
+
+        if (options.signal) {
+            query.abortSignal(options.signal);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error('getMessages: Error de Supabase:', error);

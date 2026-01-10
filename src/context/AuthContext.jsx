@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { signIn as authSignIn, signOut as authSignOut, getSession, getProfile, onAuthStateChange } from '../services/authService';
+import { supabase } from '../services/supabase';
 
 const AuthContext = createContext(null);
 
@@ -65,9 +66,13 @@ export const AuthProvider = ({ children }) => {
 
         // Escuchar cambios de autenticación
         const { data: { subscription } } = onAuthStateChange(async (event, session) => {
-            console.log(`AuthContext: Evento de Auth detectado: ${event}`);
+            // console.log(`AuthContext: Evento de Auth detectado: ${event}`);
 
             if (event === 'SIGNED_IN' && session?.user) {
+                // Evitar recargas innecesarias si es el mismo usuario
+                if (user?.id === session.user.id) {
+                    return;
+                }
                 setUser(session.user);
                 await loadProfile(session.user.id);
             } else if (event === 'SIGNED_OUT') {

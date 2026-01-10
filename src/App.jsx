@@ -195,6 +195,7 @@ const App = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [loadError, setLoadError] = useState(null); // Estado para errores de carga
+  const messagesCache = useRef(new Map()); // Caché local para evitar recargas constantes
   const [showClosedConversations, setShowClosedConversations] = useState(false);
   const [conversationAnalyses, setConversationAnalyses] = useState([]); // Análisis de IA de la conversación
   const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0); // Índice para carrusel
@@ -230,7 +231,14 @@ const App = () => {
   // Cargar teléfonos WhatsApp al autenticarse
   useEffect(() => {
     const loadPhones = async () => {
-      if (!isAuthenticated) return;
+      if (!isAuthenticated) {
+        console.log('⏭️ [PHONES] Saltando carga (no autenticado)');
+        return;
+      }
+
+      console.log('📞 [PHONES] === INICIANDO CARGA DE TELÉFONOS ===');
+      console.log('📞 [PHONES] Pestaña visible:', document.visibilityState === 'visible');
+      console.log('📞 [PHONES] Timestamp:', new Date().toISOString());
       console.log('App: Cargando teléfonos WhatsApp...');
       setPhonesLoading(true);
       setConnectionError(null);
@@ -245,6 +253,7 @@ const App = () => {
           timeoutPromise
         ]);
 
+        console.log('✅ [PHONES] Teléfonos cargados exitosamente');
         console.log('App: Teléfonos cargados:', phones);
         setWhatsappPhones(phones || []);
         setConnectionError(null);
@@ -253,39 +262,89 @@ const App = () => {
         console.log('App: Teléfono seleccionado:', defaultPhone);
         if (defaultPhone) setSelectedPhone(defaultPhone);
       } catch (err) {
-        console.error('Error cargando teléfonos:', err);
+        console.error('❌ [PHONES] Error cargando teléfonos:', err);
+        console.error('❌ [PHONES] Tipo de error:', err.message);
+        console.error('❌ [PHONES] Stack:', err.stack);
         setConnectionError('No se pudo conectar a Supabase. Verifica tu conexión.');
       } finally {
         setPhonesLoading(false);
       }
     };
+
+    console.log('🔄 [PHONES] useEffect ejecutándose, isAuthenticated:', isAuthenticated);
     loadPhones();
   }, [isAuthenticated]);
 
   // Cargar conversaciones cuando cambia el teléfono seleccionado o el filtro
   useEffect(() => {
+    const effectController = new AbortController(); // Controller para cancelar al cambiar deps
+
     const loadConversations = async (isPolling = false) => {
       if (!selectedPhone?.id) {
-        console.log('App: No hay teléfono seleccionado, limpiando conversaciones');
+        console.log('⏭️ [CONVERSATIONS] No hay teléfono seleccionado, limpiando conversaciones');
         setConversations([]);
         return;
       }
-      // Solo mostrar loading en carga inicial, no en polling
+      // Solo mostrar loading en carga inicial
       if (!isPolling) {
-        console.log(`App: Cargando conversaciones ${showClosedConversations ? 'cerradas' : 'abiertas'} para teléfono:`, selectedPhone.id);
+        console.log(`📋 [CONVERSATIONS] Cargando conversaciones ${showClosedConversations ? 'cerradas' : 'abiertas'} para teléfono:`, selectedPhone.id);
+        console.log('📋 [CONVERSATIONS] Pestaña visible:', document.visibilityState === 'visible');
         setConversationsLoading(true);
       }
       try {
-        // Timeout de 10s para evitar bloqueo inicial
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('TimeoutConversations')), 10000)
-        );
+        const fetchWithRetry = async (retries = 1) => {
+          // Intento 1: Timeout corto (4s)
+          const controller1 = new AbortController();
+          try {
+            // Si el efecto global ya canceló, no iniciar
+            if (effectController.signal.aborted) throw new Error('EffectCancelled');
 
-        const fetchPromise = showClosedConversations
-          ? getClosedConversations(selectedPhone.id)
-          : getConversations(selectedPhone.id);
+            const shortPromise = new Promise((_, reject) =>
+              setTimeout(() => {
+                controller1.abort();
+                reject(new Error('ShortTimeout'));
+              }, 4000)
+            );
 
-        const convs = await Promise.race([fetchPromise, timeoutPromise]);
+            const fetcher = showClosedConversations
+              ? getClosedConversations(selectedPhone.id, 50, { signal: controller1.signal })
+              : getConversations(selectedPhone.id, { signal: controller1.signal });
+
+            return await Promise.race([fetcher, shortPromise]);
+          } catch (err) {
+            // CRITICAL: Si el efecto fue cancelado (usuario cambió de tab), NO reintentar
+            if (effectController.signal.aborted) {
+              console.log('🛑 [CONV] Efecto cancelado, abortando reintentos.');
+              throw new Error('EffectCancelled'); // Romper flujo
+            }
+
+            if (retries > 0 && (err.message === 'ShortTimeout' || err.name === 'AbortError')) {
+              console.log('⚠️ [CONV] Primer intento lento, reintentando...');
+              const controller2 = new AbortController();
+              try {
+                const longPromise = new Promise((_, reject) =>
+                  setTimeout(() => {
+                    controller2.abort();
+                    reject(new Error('TimeoutConversations'));
+                  }, 10000)
+                );
+                const fetcher2 = showClosedConversations
+                  ? getClosedConversations(selectedPhone.id, 50, { signal: controller2.signal })
+                  : getConversations(selectedPhone.id, { signal: controller2.signal });
+                return await Promise.race([fetcher2, longPromise]);
+              } catch (e2) {
+                controller2.abort();
+                throw e2;
+              }
+            }
+            throw err;
+          }
+        };
+
+        const convs = await fetchWithRetry();
+
+        // Verificar cancelación antes de actualizar estado
+        if (effectController.signal.aborted) return;
 
         if (!isPolling) {
           console.log('App: Conversaciones cargadas:', convs);
@@ -299,17 +358,26 @@ const App = () => {
           setConnectionError(null);
         }
       } catch (err) {
+        if (err.message === 'EffectCancelled' || err.name === 'AbortError') {
+          // Ignorar errores de cancelación
+          return;
+        }
         console.error('Error cargando conversaciones:', err);
         if (!isPolling) {
-          setConnectionError('Sesión inestable. Por favor reinicia sesión.');
+          // Solo mostrar error si no es un aborto intencional
+          if (err.name !== 'AbortError') {
+            setConnectionError('Sesión inestable. Por favor reinicia sesión.');
+          }
         }
       } finally {
-        if (!isPolling) {
-          setConversationsLoading(false);
-        }
-        // Resetear flag de polling para permitir la siguiente ejecución
-        if (isPolling) {
-          isPollingConversationsRef.current = false;
+        if (!effectController.signal.aborted) {
+          if (!isPolling) {
+            setConversationsLoading(false);
+          }
+          // Resetear flag de polling para permitir la siguiente ejecución
+          if (isPolling) {
+            isPollingConversationsRef.current = false;
+          }
         }
       }
     };
@@ -350,6 +418,7 @@ const App = () => {
     }
 
     return () => {
+      effectController.abort(); // Cancelar peticiones en curso
       // clearInterval(intervalId); // POLLING DESACTIVADO
       if (unsubscribe) unsubscribe();
     };
@@ -411,21 +480,17 @@ const App = () => {
   useEffect(() => {
     const handleVisibilityChange = async () => {
       const now = Date.now();
-      // Evitar ráfagas de visibilidad (Cool-down de 45s)
-      if (document.visibilityState === 'visible' && (now - lastVisibilityRef.current > 45000)) {
-        lastVisibilityRef.current = now;
-        console.log('👁️ Pestaña visible: Verificando salud de conexión...');
+      const timeSinceLastCheck = now - lastVisibilityRef.current;
 
-        // Solo refrescar si hay un error persistente o si la pestaña estuvo oculta mucho tiempo
+
+      if (document.visibilityState === 'visible') {
+        lastVisibilityRef.current = now;
+
+        // Solo refrescar si hay un error persistente (pero fuerza refresh desactivada)
         try {
-          // Intentar un refresh suave
-          const success = await forceSessionRefresh();
-          if (success && loadError) {
-            console.log('Wake-Up: Limpiando error previo tras recuperación exitosa');
-            setLoadError(null);
-          }
+          await forceSessionRefresh();
         } catch (e) {
-          console.warn('Error en Wake-Up refresh:', e);
+          // Ignorar
         }
       }
     };
@@ -549,27 +614,75 @@ const App = () => {
       // Guardar referencia del chat actual
       currentChatIdRef.current = chat.conversationId;
 
-      // Limpiar mensajes anteriores inmediatamente
-      setChatMessages([]);
-      setMessagesLoading(true);
+      // CACHE-FIRST POINTER:
+      // Si tenemos mensajes en caché, mostrarlos de inmediato mientras actualizamos
+      const cachedMessages = messagesCache.current.get(chat.conversationId);
+      if (cachedMessages) {
+        console.log('📦 [CACHE] Usando mensajes en memoria para:', chat.conversationId);
+        setChatMessages(cachedMessages);
+        // No ponemos loading(true) para que la UI no parpadee
+      } else {
+        setChatMessages([]);
+        setMessagesLoading(true);
+      }
+
       setLoadError(null); // Resetear error
 
-      console.log('handleChatSelect: Cargando mensajes para conversación:', chat.conversationId);
+      console.log('handleChatSelect: Cargando mensajes para conversación (Red):', chat.conversationId);
       try {
-        // Timeout de 10 segundos para dar tiempo a conexiones lentas
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Tiempo de espera agotado')), 10000)
-        );
+        // SMART RETRY LOGIC CON ABORT CONTROLLER:
+        // Si el navegador deja colgada la petición, debemos cancelarla explícitamente.
 
-        // Race entre carga y timeout
-        const msgs = await Promise.race([
-          getMessages(chat.conversationId),
-          timeoutPromise
-        ]);
+        const fetchWithRetry = async (retries = 1) => {
+          // Intento 1: Timeout corto (4s) con abort
+          const controller1 = new AbortController();
+          try {
+            // Crear promesa de timeout que aborta la petición
+            const shortTimeout = new Promise((_, reject) =>
+              setTimeout(() => {
+                controller1.abort();
+                reject(new Error('ShortTimeout'));
+              }, 4000)
+            );
+
+            return await Promise.race([
+              getMessages(chat.conversationId, 50, { signal: controller1.signal }),
+              shortTimeout
+            ]);
+          } catch (err) {
+            if (retries > 0 && (err.message === 'ShortTimeout' || err.name === 'AbortError')) {
+              console.log('⚠️ [RETRY] Primer intento lento/abortado, reintentando...');
+
+              // Intento 2: Timeout más generoso (10s)
+              const controller2 = new AbortController();
+              try {
+                const longTimeout = new Promise((_, reject) =>
+                  setTimeout(() => {
+                    controller2.abort();
+                    reject(new Error('Tiempo de espera agotado'));
+                  }, 10000)
+                );
+
+                return await Promise.race([
+                  getMessages(chat.conversationId, 50, { signal: controller2.signal }),
+                  longTimeout
+                ]);
+              } catch (e2) {
+                controller2.abort();
+                throw e2;
+              }
+            }
+            throw err;
+          }
+        };
+
+        const msgs = await fetchWithRetry();
 
         // Verificar si seguimos en el mismo chat antes de actualizar
         if (currentChatIdRef.current === chat.conversationId) {
-          console.log('handleChatSelect: Mensajes cargados:', msgs);
+          // Actualizar Caché
+          messagesCache.current.set(chat.conversationId, msgs || []);
+
           setChatMessages(msgs || []);
           setLoadError(null);
 
