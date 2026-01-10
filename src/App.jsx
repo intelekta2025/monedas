@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
 import { getWhatsappPhones } from './services/whatsappService';
-import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToMessages, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
+import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToAllMessagesByPhone, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
 import { forceSessionRefresh, forceLogout, surgicalConnectionReset } from './services/supabase';
 
 import {
@@ -198,6 +198,8 @@ const App = () => {
   const [showClosedConversations, setShowClosedConversations] = useState(false);
   const [conversationAnalyses, setConversationAnalyses] = useState([]); // Análisis de IA de la conversación
   const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0); // Índice para carrusel
+  const [imageModalOpen, setImageModalOpen] = useState(false); // Estado para modal de zoom de imagen
+  const [imageModalUrl, setImageModalUrl] = useState(null); // URL de la imagen en el modal
 
   // Detección automática del dispositivo basada en el ancho de ventana
   useEffect(() => {
@@ -405,14 +407,23 @@ const App = () => {
   }, [selectedConversation?.client_id, selectedPhone?.id, showClosedConversations]);
 
   // --- Wake-Up Handler: Recuperar conexión al volver a la pestaña ---
+  const lastVisibilityRef = useRef(0);
   useEffect(() => {
     const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
+      const now = Date.now();
+      // Evitar ráfagas de visibilidad (Cool-down de 45s)
+      if (document.visibilityState === 'visible' && (now - lastVisibilityRef.current > 45000)) {
+        lastVisibilityRef.current = now;
         console.log('👁️ Pestaña visible: Verificando salud de conexión...');
-        // Intentar un refresh suave para "despertar" la conexión si estaba dormida
-        // No forzamos reload, solo reconexión de sesión
+
+        // Solo refrescar si hay un error persistente o si la pestaña estuvo oculta mucho tiempo
         try {
-          await forceSessionRefresh();
+          // Intentar un refresh suave
+          const success = await forceSessionRefresh();
+          if (success && loadError) {
+            console.log('Wake-Up: Limpiando error previo tras recuperación exitosa');
+            setLoadError(null);
+          }
         } catch (e) {
           console.warn('Error en Wake-Up refresh:', e);
         }
@@ -421,51 +432,88 @@ const App = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+  }, [loadError]);
 
-  // --- Real-time: Suscripción a mensajes nuevos ---
+  // --- ESC key handler para cerrar modal de imagen ---
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && imageModalOpen) {
+        setImageModalOpen(false);
+      }
+    };
 
+    if (imageModalOpen) {
+      document.addEventListener('keydown', handleEscKey);
+      return () => document.removeEventListener('keydown', handleEscKey);
+    }
+  }, [imageModalOpen]);
 
-  // Inicializar sin chat seleccionado (limpio)
+  // --- Real-time: Suscripción GLOBAL a mensajes (Por teléfono, no por chat) ---
   const [selectedChat, setSelectedChat] = useState(null);
+  const selectedChatRef = useRef(null);
 
-  // --- Real-time: Suscripción a mensajes nuevos ---
+  // Mantener el Ref actualizado para el callback de suscripción global
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
   useEffect(() => {
     let unsubscribe = null;
 
-    if (selectedChat?.conversationId) {
-      console.log('Iniciando suscripción a mensajes para:', selectedChat.conversationId);
-      unsubscribe = subscribeToMessages(selectedChat.conversationId, (newMessage) => {
-        console.log('Nuevo mensaje recibido (Real-time):', newMessage);
-        setChatMessages(prev => {
-          // Evitar duplicados
-          if (prev.find(m => m.id === newMessage.id)) return prev;
-          return [...prev, newMessage];
-        });
+    if (selectedPhone?.id) {
+      console.log('--- Suscripción Global Iniciada para:', selectedPhone.name);
+      unsubscribe = subscribeToAllMessagesByPhone(selectedPhone.id, (newMessage) => {
+        console.log('Mensaje Global recibido:', newMessage);
 
-        // Scroll al fondo si es mensaje nuevo
-        if (chatContainerRef.current) {
-          // Pequeño delay para asegurar render
+        // 1. Si el mensaje pertenece al chat que estamos viendo, lo añadimos a la vista
+        if (newMessage.conversation_id === selectedChatRef.current?.conversationId) {
+          setChatMessages(prev => {
+            if (prev.find(m => m.id === newMessage.id)) return prev;
+            return [...prev, newMessage];
+          });
+
+          // Auto-scroll si es el chat activo
           setTimeout(() => {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+            if (chatContainerRef.current) {
+              chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+            }
           }, 100);
         }
+
+        // 2. SIEMPRE actualizar la lista lateral (Conversaciones)
+        setConversations(prev => {
+          return prev.map(conv => {
+            if (conv.id === newMessage.conversation_id) {
+              return {
+                ...conv,
+                last_message: newMessage.body,
+                last_message_at: newMessage.created_at,
+                // Si el mensaje es entrante y NO estamos viendo ese chat, sumar 1 al contador
+                unread_count: (newMessage.direction === 'inbound' && selectedChatRef.current?.conversationId !== conv.id)
+                  ? (conv.unread_count || 0) + 1
+                  : conv.unread_count
+              };
+            }
+            return conv;
+          });
+        });
       });
     }
 
     return () => {
       if (unsubscribe) {
-        console.log('Cerrando suscripción mensajes');
+        console.log('Cerrando suscripción Global (Solo al cambiar de teléfono o salir)');
         unsubscribe();
       }
     };
-  }, [selectedChat?.conversationId]);
+  }, [selectedPhone?.id]); // Solo reacciona si cambias el aparato físico
 
   useEffect(() => {
-    if (chatContainerRef.current) {
+    if (chatContainerRef.current && selectedChat) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [selectedChat]);
+
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
@@ -486,6 +534,9 @@ const App = () => {
   const isCompactView = isMobileView || isTabletView; // Móvil o Tablet: panel de análisis como overlay
 
   const handleChatSelect = async (chat) => {
+    // Si ya estamos en este chat, no recargar (evita loop de desconexión/conexión)
+    if (selectedChat?.conversationId === chat.conversationId) return;
+
     console.log('handleChatSelect: Seleccionando chat:', chat);
     setSelectedChat(chat);
     // Actualizar estado para el polling
@@ -505,9 +556,9 @@ const App = () => {
 
       console.log('handleChatSelect: Cargando mensajes para conversación:', chat.conversationId);
       try {
-        // Timeout de 4 segundos (Fail Fast & Recover)
+        // Timeout de 10 segundos para dar tiempo a conexiones lentas
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Tiempo de espera agotado')), 4000)
+          setTimeout(() => reject(new Error('Tiempo de espera agotado')), 10000)
         );
 
         // Race entre carga y timeout
@@ -555,32 +606,14 @@ const App = () => {
         if (currentChatIdRef.current === chat.conversationId) {
           console.error('Error cargando mensajes:', err);
 
-          // Intentar recuperar la sesión automáticamente
-          console.log('Intentando recuperar sesión...');
-          const refreshed = await forceSessionRefresh();
-
-          if (refreshed) {
-            // Reintentar carga de mensajes después del refresh
-            console.log('Sesión recuperada, reintentando carga...');
-            try {
-              const retryMsgs = await getMessages(chat.conversationId);
-              if (currentChatIdRef.current === chat.conversationId) {
-                setChatMessages(retryMsgs || []);
-                setLoadError(null);
-                setMessagesLoading(false);
-                return; // Éxito en el reintento
-              }
-            } catch (retryErr) {
-              console.error('Error en reintento:', retryErr);
-            }
-          }
-
-          // Si el refresh falló o el reintento falló, mostrar error
+          // Mostrar error sin intentar refresh automático (evita interrumpir la conexión)
           let friendlyError = 'Error cargando mensajes';
           if (err.message === 'Tiempo de espera agotado') {
-            friendlyError = 'La conexión está lenta o inestable';
-          } else if (err.message.includes('fetch')) {
-            friendlyError = 'Error de conexión a internet';
+            friendlyError = 'La conexión está tardando más de lo esperado. Intenta de nuevo.';
+          } else if (err.message.includes('fetch') || err.message.includes('network')) {
+            friendlyError = 'Error de conexión. Verifica tu internet.';
+          } else if (err.message.includes('session') || err.message.includes('auth')) {
+            friendlyError = 'Sesión expirada. Recarga la página.';
           }
 
           setLoadError(friendlyError);
@@ -881,15 +914,9 @@ const App = () => {
                         <p className={`text-xs ${theme.textMuted} mb-3`}>{connectionError}</p>
                         <button
                           onClick={() => window.location.reload()}
-                          className="w-full mb-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors"
+                          className="w-full mb-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors shadow-lg"
                         >
-                          Reintentar
-                        </button>
-                        <button
-                          onClick={signOut}
-                          className="w-full px-4 py-2 border border-red-300 hover:bg-red-50 text-red-500 text-xs font-bold rounded-lg transition-colors"
-                        >
-                          Cerrar Sesión (Reset)
+                          Reintentar Conexión
                         </button>
                       </div>
                     )}
@@ -1035,9 +1062,7 @@ const App = () => {
                             });
                             const hasImage = msg.num_media > 0 && msg.media?.length > 0 && msg.media[0]?.media_url;
                             // Debug: log para ver datos de media
-                            if (msg.num_media > 0) {
-                              console.log('Mensaje con media:', { id: msg.id, num_media: msg.num_media, media: msg.media });
-                            }
+                            // Log removido a petición del usuario para mejor legibilidad
                             return (
                               <div key={msg.id || idx} className={`flex ${sender === 'user' ? 'justify-start' : 'justify-end'}`}>
                                 <div className={`max-w-[85%] lg:max-w-[80%] rounded-2xl p-3 lg:p-4 text-sm leading-relaxed relative group transition-all ${sender === 'user' ? theme.chatBubbleUser : theme.chatBubbleBot} ${sender === 'user' ? 'rounded-tl-none' : 'rounded-tr-none'}`}>
@@ -1151,7 +1176,15 @@ const App = () => {
                                     <div className={`mb-4 group relative rounded-lg overflow-hidden border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-100'} shadow-sm w-full h-32`}>
                                       <img src={analysis.media_url} alt="Moneda analizada" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
-                                        <a href={analysis.media_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors border border-white/20"><Eye size={16} /></a>
+                                        <button
+                                          onClick={() => {
+                                            setImageModalUrl(analysis.media_url);
+                                            setImageModalOpen(true);
+                                          }}
+                                          className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors border border-white/20"
+                                        >
+                                          <Eye size={16} />
+                                        </button>
                                       </div>
                                     </div>
                                   )}
@@ -1231,6 +1264,33 @@ const App = () => {
           </div>
         </div>
       </div>
+
+      {/* MODAL DE ZOOM DE IMAGEN */}
+      {imageModalOpen && imageModalUrl && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setImageModalOpen(false)}
+        >
+          <div className="relative max-w-[95vw] max-h-[95vh] p-4">
+            {/* Botón de cerrar */}
+            <button
+              onClick={() => setImageModalOpen(false)}
+              className="absolute -top-12 right-0 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all border border-white/20 shadow-lg"
+              aria-label="Cerrar"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Imagen */}
+            <img
+              src={imageModalUrl}
+              alt="Moneda en tamaño completo"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

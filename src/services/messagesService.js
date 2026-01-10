@@ -54,19 +54,28 @@ export const getConversation = async (conversationId) => {
 
 // Obtener mensajes de una conversación con sus media
 export const getMessages = async (conversationId, limit = 50) => {
-    const { data, error } = await supabase
-        .from('whatsapp_messages')
-        .select(`
-      *,
-      media:whatsapp_message_media(id, media_index, media_url, media_content_type, ai_analysis)
-    `)
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: false }) // Obtener los más recientes primero
-        .limit(limit);
+    try {
+        const { data, error } = await supabase
+            .from('whatsapp_messages')
+            .select(`
+          *,
+          media:whatsapp_message_media(id, media_index, media_url, media_content_type, ai_analysis)
+        `)
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: false }) // Obtener los más recientes primero
+            .limit(limit);
 
-    if (error) throw error;
-    // Invertir para mostrar cronológicamente (antiguos -> nuevos)
-    return data ? data.reverse() : [];
+        if (error) {
+            console.error('getMessages: Error de Supabase:', error);
+            throw error;
+        }
+
+        // Invertir para mostrar cronológicamente (antiguos -> nuevos)
+        return data ? data.reverse() : [];
+    } catch (err) {
+        console.error('getMessages: Error en la petición:', err);
+        throw err;
+    }
 };
 
 // Obtener TODOS los mensajes de un cliente (de todas sus conversaciones)
@@ -245,3 +254,30 @@ export const subscribeToMessages = (conversationId, callback) => {
         supabase.removeChannel(channel);
     };
 };
+
+/**
+ * Suscribirse a TODOS los mensajes de un número de teléfono (Global)
+ * Permite actualizar la lista lateral y el chat activo al mismo tiempo.
+ */
+export const subscribeToAllMessagesByPhone = (phoneId, callback) => {
+    const channel = supabase
+        .channel(`global-messages-${phoneId}`)
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'whatsapp_messages',
+                filter: `phone_id=eq.${phoneId}`,
+            },
+            (payload) => {
+                callback(payload.new);
+            }
+        )
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
+};
+

@@ -14,13 +14,23 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
  * Útil cuando la conexión se queda "zombie"
  * @returns {Promise<boolean>} true si se recuperó la sesión, false si no
  */
-export const forceSessionRefresh = async () => {
-    try {
-        console.log('Supabase: Intentando refrescar sesión...');
+// Variable para evitar refrescos duplicados en ráfaga (Cool-down de 2 minutos)
+let lastSuccessfulRefresh = 0;
+const REFRESH_COOLDOWN = 2 * 60 * 1000;
 
-        // 1. Obtener sesión actual con TIMEOUT (Evitar que getSession cuelgue)
+export const forceSessionRefresh = async () => {
+    const now = Date.now();
+    if (now - lastSuccessfulRefresh < REFRESH_COOLDOWN) {
+        console.log('Supabase: Refresh ignorado (Cool-down activo)');
+        return true;
+    }
+
+    try {
+        console.log('Supabase: Intentando refrescar sesión (Wake-up)...');
+
+        // 1. Obtener sesión actual con TIMEOUT (Aumentado a 6s para redes lentas)
         const sessionPromise = new Promise(async (resolve, reject) => {
-            const t = setTimeout(() => reject(new Error('GetSessionTimeout')), 3000); // 3s max
+            const t = setTimeout(() => reject(new Error('GetSessionTimeout')), 6000);
             try {
                 const res = await supabase.auth.getSession();
                 clearTimeout(t);
@@ -38,9 +48,9 @@ export const forceSessionRefresh = async () => {
         }
 
         if (session) {
-            // Si tenemos sesión oficial, intentamos refresh standard
+            // Si tenemos sesión oficial, intentamos refresh standard (Aumentado a 8s)
             const refreshTimeout = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('RefreshTimeout')), 5000)
+                setTimeout(() => reject(new Error('RefreshTimeout')), 8000)
             );
 
             const { error: refreshError } = await Promise.race([
@@ -50,6 +60,7 @@ export const forceSessionRefresh = async () => {
 
             if (!refreshError) {
                 console.log('Supabase: Sesión refrescada exitosamente (Standard)');
+                lastSuccessfulRefresh = Date.now();
                 return true;
             }
         }
@@ -79,20 +90,14 @@ export const forceSessionRefresh = async () => {
             if (rawRefreshToken) {
                 console.log('Supabase: Token de respaldo encontrado en raw storage.');
 
-                // 2. Limpiar todo sb- excepto backups (si hubiera)
-                Object.keys(localStorage).forEach(key => {
-                    if (key.startsWith('sb-')) {
-                        localStorage.removeItem(key);
-                    }
-                });
-
-                // 3. Restaurar sesión manualmente con el token crudo
+                // 2. Restaurar sesión manualmente con el token crudo
                 const { error: restoreError } = await supabase.auth.setSession({
                     refresh_token: rawRefreshToken
                 });
 
                 if (!restoreError) {
                     console.log('Supabase: ¡Conexión rescatada exitosamente (Raw)!');
+                    lastSuccessfulRefresh = Date.now();
                     return true;
                 } else {
                     console.error('Supabase: Falló rescate quirúrgico:', restoreError);
@@ -113,79 +118,67 @@ export const forceSessionRefresh = async () => {
  * Intenta simular un "Ctrl+Shift+Del" sin desloguear al usuario.
  */
 export const surgicalConnectionReset = async () => {
-    console.log('Supabase: Iniciando reset quirúrgico manual...');
+    console.log('Supabase: Iniciando reset quirúrgico manual (Safe Mode)...');
 
     try {
-        // 1. Intentar obtener refresh token (via SDK o Raw Storage)
-        let tokenToSave = null;
+        let authKey = null;
+        let tokenFound = null;
 
-        // Intento SDK con timeout corto
-        try {
-            const sessionPromise = new Promise(async (resolve, reject) => {
-                const t = setTimeout(() => reject(new Error('Timeout')), 2000);
+        // 1. Identificar cuál es la llave Maestra (Auth Token)
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                authKey = key;
                 try {
-                    const res = await supabase.auth.getSession();
-                    clearTimeout(t);
-                    resolve(res);
-                } catch (e) { clearTimeout(t); reject(e); }
-            });
-            const { data } = await sessionPromise;
-            tokenToSave = data?.session?.refresh_token;
-        } catch (e) { console.warn('SDK getSession timed out, trying raw storage'); }
+                    const val = JSON.parse(localStorage.getItem(key));
+                    if (val && val.refresh_token) tokenFound = val.refresh_token;
+                } catch (e) { }
+            }
+        });
 
-        // Fallback: Raw Storage
-        if (!tokenToSave) {
+        if (authKey && tokenFound) {
+            // 2. Borrar todo lo de Supabase MENOS las llaves vitales de auth
+            console.log('Supabase: Limpiando cache corrupto, preservando credenciales vitales...');
             Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-                    try {
-                        const val = JSON.parse(localStorage.getItem(key));
-                        if (val && val.refresh_token) tokenToSave = val.refresh_token;
-                    } catch (e) { }
-                }
-            });
-        }
+                // EXPLICIT WHITELIST: NO borrar nada que termine en -token, -verifier o sea la llave maestra
+                const isAuthCore = key.endsWith('-auth-token') ||
+                    key.endsWith('-code-verifier') ||
+                    key.includes('supabase.auth.token');
 
-        if (tokenToSave) {
-            console.log('Supabase: Token salvado. Limpiando almacenamiento...');
-
-            // 2. Limpiar almacenamiento local
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('sb-')) {
+                if (key.startsWith('sb-') && !isAuthCore) {
+                    console.log(`Supabase: Limpiando llave de cache: ${key}`);
                     localStorage.removeItem(key);
                 }
             });
 
-            // 3. Restaurar sesión manualmente con TIMEOUT CRÍTICO
-            // Si esto se cuelga, el usuario muere. Ponemos un timeout agresivo.
-            const restorePromise = new Promise(async (resolve, reject) => {
-                const t = setTimeout(() => reject(new Error('RestoreTimeout')), 3000);
-                try {
-                    const res = await supabase.auth.setSession({ refresh_token: tokenToSave });
-                    clearTimeout(t);
-                    resolve(res);
-                } catch (e) { clearTimeout(t); reject(e); }
-            });
-
+            // 3. Intentar setSession para rehidratar el cliente en memoria
             try {
-                const { error: restoreError } = await restorePromise;
-                if (!restoreError) {
-                    console.log('Supabase: ¡Conexión rescatada exitosamente (Surgical)!');
-                    // No recargamos si tuvo éxito, dejamos que la app se recupere sola o el usuario reintente
-                    return;
-                } else {
-                    console.error('Supabase: Falló setSession quirúrgico:', restoreError);
-                }
-            } catch (restoreErr) {
-                console.error('Supabase: Timeout o error en setSession quirúrgico.', restoreErr);
+                const restorePromise = new Promise(async (resolve, reject) => {
+                    const t = setTimeout(() => reject(new Error('RestrictTimeout')), 3000);
+                    try {
+                        // Usamos el token que ya tenemos seguro
+                        const res = await supabase.auth.setSession({ refresh_token: tokenFound });
+                        clearTimeout(t);
+                        resolve(res);
+                    } catch (e) { clearTimeout(t); reject(e); }
+                });
+
+                await restorePromise;
+                console.log('Supabase: Cliente rehidratado exitosamente.');
+            } catch (e) {
+                console.warn('Supabase: setSession falló o timeout, pero las credenciales siguen en disco.', e);
             }
+
         } else {
-            console.error('No se pudo encontrar token para salvar.');
+            console.warn('Supabase: No se encontró token de auth, no se puede preservar sesión.');
         }
+
     } catch (e) {
         console.error('Error en reset quirúrgico', e);
     }
 
-    // 4. Recargar página para asegurar estado limpio
+    // 4. Recargar página
+    // Al no haber borrado el authKey, el reload debería leerlo limpio del disco
+    console.log('Supabase: Recargando página...');
     window.location.reload();
 };
 

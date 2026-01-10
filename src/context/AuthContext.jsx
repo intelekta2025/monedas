@@ -65,12 +65,43 @@ export const AuthProvider = ({ children }) => {
 
         // Escuchar cambios de autenticación
         const { data: { subscription } } = onAuthStateChange(async (event, session) => {
+            console.log(`AuthContext: Evento de Auth detectado: ${event}`);
+
             if (event === 'SIGNED_IN' && session?.user) {
                 setUser(session.user);
                 await loadProfile(session.user.id);
             } else if (event === 'SIGNED_OUT') {
-                setUser(null);
-                setProfile(null);
+                // DOBLE COMPROBACIÓN:
+                // A veces SIGNED_OUT se dispara por un error de red temporal.
+                // Verificamos si realmente no hay tokens en el disco antes de echar al usuario.
+                const hasTokens = Object.keys(localStorage).some(key => key.startsWith('sb-') && key.endsWith('-token'));
+
+                if (!hasTokens) {
+                    console.log('AuthContext: Confirmado SIGNED_OUT (Sin tokens)');
+                    setUser(null);
+                    setProfile(null);
+                } else {
+                    console.warn('AuthContext: SIGNED_OUT ignorado (Tokens aún presentes). Reintentando validación silenciosa...');
+                    try {
+                        const { data: { session: currentSession } } = await supabase.auth.getSession();
+                        if (currentSession?.user) {
+                            console.log('AuthContext: Sesión recuperada tras falso SIGN_OUT');
+                            setUser(currentSession.user);
+                            await loadProfile(currentSession.user.id);
+                        } else {
+                            // Si realmente falló getSession, ahí sí limpiamos
+                            setUser(null);
+                            setProfile(null);
+                        }
+                    } catch (e) {
+                        // Si hay error en la comprobación, por seguridad no echamos al usuario todavía
+                        // dejaremos que el interceptor o el siguiente refresh lo intente.
+                        console.error('AuthContext: Error en doble comprobación SIGNED_OUT:', e);
+                    }
+                }
+            } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+                console.log('AuthContext: Token refrescado exitosamente');
+                setUser(session.user);
             }
         });
 
