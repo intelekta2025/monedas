@@ -4,6 +4,7 @@ import SettingsView from './components/SettingsView';
 import { getWhatsappPhones } from './services/whatsappService';
 import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToAllMessagesByPhone, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
 import { supabase } from './services/supabase';
+import ClientEditModal from './components/ClientEditModal';
 
 import {
   MessageCircle,
@@ -48,8 +49,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-// --- COMPONENTE DE LOGIN ---
-const LoginScreen = () => {
+const LoginScreen = ({ isDarkMode, toggleTheme }) => {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -74,40 +74,64 @@ const LoginScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+    <div className={`min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
       {/* Fondo decorativo */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]"></div>
       </div>
 
-      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl shadow-2xl relative z-10">
+      <div className={`w-full max-w-md backdrop-blur-xl border p-8 rounded-3xl shadow-2xl relative z-10 transition-colors duration-300 ${isDarkMode
+        ? 'bg-slate-900/80 border-slate-800'
+        : 'bg-white/80 border-gray-200/50 shadow-emerald-500/5'
+        }`}>
+
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className={`absolute top-4 right-4 p-2 rounded-full transition-all ${isDarkMode
+            ? 'hover:bg-slate-800 text-slate-400 hover:text-emerald-400'
+            : 'hover:bg-gray-100 text-gray-400 hover:text-emerald-600'
+            }`}
+          title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+        >
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+
         <div className="flex flex-col items-center mb-8">
           <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 p-3 rounded-2xl shadow-lg shadow-emerald-500/20 mb-4">
             <Coins className="text-white" size={32} />
           </div>
-          <h1 className="font-serif font-bold text-2xl text-white tracking-wide">Bazar de moneda</h1>
+          <h1 className={`font-serif font-bold text-2xl tracking-wide transition-colors ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+            Bazar de monedas
+          </h1>
           <p className="text-xs uppercase tracking-[0.2em] font-bold text-emerald-500 mt-2">Acceso Administrativo</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Error Message */}
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            <div className={`flex items-center gap-2 p-3 rounded-xl border text-sm ${isDarkMode
+              ? 'bg-red-500/10 border-red-500/30 text-red-400'
+              : 'bg-red-50 border-red-200 text-red-600'
+              }`}>
               <AlertCircle size={18} />
               <span>{error}</span>
             </div>
           )}
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-400 ml-1 uppercase">Email</label>
+            <label className={`text-xs font-bold ml-1 uppercase transition-colors ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Email</label>
             <div className="relative group">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-500 transition-colors" size={18} />
+              <User className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isDarkMode ? 'text-slate-500' : 'text-gray-400'} group-focus-within:text-emerald-500`} size={18} />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all placeholder:text-slate-600"
+                className={`w-full border rounded-xl py-3 pl-10 pr-4 outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-emerald-500/50 ${isDarkMode
+                  ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-emerald-500/50'
+                  : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-emerald-500'
+                  }`}
                 placeholder="tu@email.com"
                 required
               />
@@ -115,26 +139,31 @@ const LoginScreen = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-400 ml-1 uppercase">Contraseña</label>
+            <label className={`text-xs font-bold ml-1 uppercase transition-colors ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Contraseña</label>
             <div className="relative group">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-500 transition-colors" size={18} />
+              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isDarkMode ? 'text-slate-500' : 'text-gray-400'} group-focus-within:text-emerald-500`} size={18} />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all placeholder:text-slate-600"
+                className={`w-full border rounded-xl py-3 pl-10 pr-4 outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-emerald-500/50 ${isDarkMode
+                  ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-emerald-500/50'
+                  : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-emerald-500'
+                  }`}
                 placeholder="••••••••"
                 required
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-400 pt-2">
-            <label className="flex items-center gap-2 cursor-pointer hover:text-slate-300">
-              <input type="checkbox" className="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-emerald-500/20" />
+          <div className={`flex items-center justify-between text-xs pt-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+            <label className={`flex items-center gap-2 cursor-pointer ${isDarkMode ? 'hover:text-slate-300' : 'hover:text-gray-700'}`}>
+              <input type="checkbox" className={`rounded text-emerald-500 focus:ring-emerald-500/20 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`} />
               Recordarme
             </label>
-            <a href="#" className="hover:text-emerald-500 transition-colors">¿Olvidaste tu contraseña?</a>
+            <span className={`opacity-50 cursor-not-allowed flex items-center gap-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`} title="Funcionalidad en desarrollo">
+              ¿Olvidaste tu contraseña? <span className="text-[10px] bg-slate-800 px-1 rounded border border-slate-700">Dev</span>
+            </span>
           </div>
 
           <button
@@ -154,8 +183,8 @@ const LoginScreen = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-slate-800 text-center">
-          <p className="text-[10px] text-slate-600 uppercase font-medium">Sistema Potenciado por IA V2.4</p>
+        <div className={`mt-8 pt-6 border-t text-center ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
+          <p className={`text-[10px] uppercase font-medium ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}>Powered by intelekta.ai</p>
         </div>
       </div>
     </div>
@@ -171,7 +200,17 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('oportunidades');
   const [dateFilter, setDateFilter] = useState('any');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Recuperar preferencia de tema del usuario
+    const saved = localStorage.getItem('themePreference');
+    if (saved) return saved === 'dark';
+    return true; // Default Dark
+  });
+
+  // Persistir preferencia de tema
+  useEffect(() => {
+    localStorage.setItem('themePreference', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
   const [showMobileInfo, setShowMobileInfo] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
@@ -201,6 +240,10 @@ const App = () => {
   const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0); // Índice para carrusel
   const [imageModalOpen, setImageModalOpen] = useState(false); // Estado para modal de zoom de imagen
   const [imageModalUrl, setImageModalUrl] = useState(null); // URL de la imagen en el modal
+
+  // Estado para edición de cliente
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [clientMenuOpen, setClientMenuOpen] = useState(false); // Menú de 3 puntos
 
   // Detección automática del dispositivo basada en el ancho de ventana
   useEffect(() => {
@@ -364,12 +407,40 @@ const App = () => {
     // Suscribirse a cambios en tiempo real (solo para conversaciones abiertas)
     let unsubscribe;
     if (selectedPhone?.id && !showClosedConversations) {
-      unsubscribe = subscribeToConversations(selectedPhone.id, (payload) => {
+      unsubscribe = subscribeToConversations(selectedPhone.id, async (payload) => {
         if (payload.eventType === 'INSERT') {
-          setConversations(prev => [payload.new, ...prev]);
+          // El payload de realtime NO trae las relaciones (client), así que hay que obtenerlas
+          try {
+            const { data: fullConv, error } = await supabase
+              .from('conversations')
+              .select('*, client:clients(*)')
+              .eq('id', payload.new.id)
+              .single();
+
+            if (fullConv && !error) {
+              setConversations(prev => [fullConv, ...prev]);
+            } else {
+              // Fallback si falla el fetch (mejor que nada)
+              setConversations(prev => [payload.new, ...prev]);
+            }
+          } catch (e) {
+            console.error('Error fetching full conversation on insert:', e);
+            setConversations(prev => [payload.new, ...prev]);
+          }
         } else if (payload.eventType === 'UPDATE') {
+          // Para updates, idealmente también deberíamos hacer fetch si cambiaron datos relacionales,
+          // pero si solo cambió last_message, el payload suele ser suficiente si ya teníamos el cliente.
+          // Sin embargo, si la conversación estaba "Sin nombre" en memoria, el update no lo arreglará.
+          // Por seguridad, si el cliente falta en el estado actual, podríamos hacer fetch.
+
           setConversations(prev =>
-            prev.map(c => c.id === payload.new.id ? payload.new : c)
+            prev.map(c => {
+              if (c.id === payload.new.id) {
+                // Si ya tenemos cliente, lo preservamos mergeando
+                return { ...c, ...payload.new, client: c.client };
+              }
+              return c;
+            })
           );
         }
       });
@@ -696,6 +767,27 @@ const App = () => {
     chatBubbleBot: isDarkMode ? 'bg-emerald-900/20 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200',
   };
 
+  const handleClientUpdated = (updatedClient) => {
+    // Actualizar conversaciones localmente
+    setConversations(prev => prev.map(c => {
+      if (c.client?.id === updatedClient.id) {
+        return {
+          ...c,
+          client: { ...c.client, ...updatedClient }
+        };
+      }
+      return c;
+    }));
+
+    // Actualizar chat seleccionado si corresponde
+    if (selectedChat?.clientId === updatedClient.id) {
+      setSelectedChat(prev => ({
+        ...prev,
+        name: updatedClient.full_name || prev.name
+      }));
+    }
+  };
+
   // Transformar conversaciones reales al formato del UI
   const realChatsFormatted = conversations.map(conv => ({
     id: conv.id,
@@ -707,7 +799,9 @@ const App = () => {
       })
       : '',
     date: conv.last_message_at ? conv.last_message_at.split('T')[0] : '',
-    type: 'Oportunidad', // Por ahora todo como oportunidad, la IA lo clasificará después
+    type: conv.classification === 'opportunity' ? 'Oportunidad' :
+      conv.classification === 'trash' ? 'Basura' :
+        'Consulta', // Default: 'inquiry' o null se tratan como Consulta
     priority: conv.unread_count > 0 ? 'Alta' : 'Media',
     avatar: (conv.client?.full_name || conv.client?.phone_number || '??').slice(0, 2).toUpperCase(),
     unreadCount: conv.unread_count || 0,
@@ -793,7 +887,7 @@ const App = () => {
   }
 
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    return <LoginScreen isDarkMode={isDarkMode} toggleTheme={toggleTheme} />;
   }
 
   return (
@@ -1024,7 +1118,38 @@ const App = () => {
                               <Archive size={18} />
                             </button>
                           )}
-                          <button className={`p-2 rounded-lg hover:bg-opacity-10 transition-colors ${theme.textMuted} hover:bg-slate-500`}><MoreVertical size={18} /></button>
+                          <div className="relative">
+                            <button
+                              onClick={() => setClientMenuOpen(!clientMenuOpen)}
+                              className={`p-2 rounded-lg hover:bg-opacity-10 transition-colors ${theme.textMuted} hover:bg-slate-500`}
+                            >
+                              <MoreVertical size={18} />
+                            </button>
+
+                            {/* Menú contextual */}
+                            {clientMenuOpen && (
+                              <div className={`absolute right-0 top-full mt-2 w-48 rounded-xl shadow-xl border overflow-hidden z-50 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-100'}`}>
+                                <button
+                                  onClick={() => {
+                                    setClientMenuOpen(false);
+                                    setClientModalOpen(true);
+                                  }}
+                                  className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 hover:bg-emerald-500/10 hover:text-emerald-500 transition-colors ${theme.text}`}
+                                >
+                                  <User size={16} />
+                                  Editar Cliente
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Overlay transparente para cerrar menú al hacer click fuera */}
+                            {clientMenuOpen && (
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setClientMenuOpen(false)}
+                              ></div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -1294,6 +1419,14 @@ const App = () => {
           </div>
         </div>
       )}
+      <ClientEditModal
+        isOpen={clientModalOpen}
+        onClose={() => setClientModalOpen(false)}
+        clientId={selectedChat?.clientId}
+        currentName={selectedChat?.name}
+        onClientUpdated={handleClientUpdated}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 };
@@ -1416,6 +1549,7 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages }
           </button>
         </div>
       </div>
+
     </div>
   );
 };
