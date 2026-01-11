@@ -994,12 +994,11 @@ const App = () => {
 
               <div className="flex items-center gap-2">
                 <button onClick={toggleTheme} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-slate-800 text-emerald-400' : 'hover:bg-gray-100 text-slate-600'}`}>{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
-                {isMobileView && <button className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}><Menu size={20} className={theme.textMuted} /></button>}
                 {!isMobileView && (
                   <>
                     <button
                       onClick={() => setCurrentView(currentView === 'dashboard' ? 'main' : 'dashboard')}
-                      className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
+                      className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
                     >
                       {currentView === 'dashboard' ? (
                         <>
@@ -1011,7 +1010,7 @@ const App = () => {
                         </>
                       )}
                     </button>
-                    <button onClick={() => setCurrentView('settings')} className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><Settings size={16} /></button>
+                    <button onClick={() => setCurrentView('settings')} className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><Settings size={16} /></button>
                     <div className={`w-9 h-9 rounded-full ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-200 border-gray-300'} flex items-center justify-center border cursor-pointer`}><User size={18} className={theme.textMuted} /></div>
                     <button
                       onClick={signOut}
@@ -1020,6 +1019,31 @@ const App = () => {
                     >
                       <LogOut size={16} />
                       <span className="hidden xl:inline">Salir</span>
+                    </button>
+                  </>
+                )}
+                {isMobileView && (
+                  <>
+                    <button
+                      onClick={() => setCurrentView(currentView === 'dashboard' ? 'main' : 'dashboard')}
+                      className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
+                      title={currentView === 'dashboard' ? 'Bandeja' : 'Dashboard'}
+                    >
+                      {currentView === 'dashboard' ? <ArrowLeft size={20} /> : <LayoutGrid size={20} />}
+                    </button>
+                    <button
+                      onClick={() => setCurrentView('settings')}
+                      className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
+                      title="Configuración"
+                    >
+                      <Settings size={20} />
+                    </button>
+                    <button
+                      onClick={signOut}
+                      className={`p-2 rounded-lg transition-colors text-red-400 ${isDarkMode ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
+                      title="Cerrar sesión"
+                    >
+                      <LogOut size={20} />
                     </button>
                   </>
                 )}
