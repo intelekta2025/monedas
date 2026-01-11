@@ -1,147 +1,317 @@
 import React from 'react';
+import { Inbox, Star, Trash2, Users, MessageCircle, Bell, Check, Target, Filter } from 'lucide-react';
 
-const DashboardHome = ({ navigateToWorkspace, stats }) => {
+const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = true, stats = {} }) => {
+  // Default stats if not provided
+  const defaultStats = {
+    uniqueClients: 854,
+    conversations: 1248,
+    opportunities: 42,
+    intention: 70,
+    trash: 31,
+    unattended: 12,
+    active: 45,
+    closed: 1191
+  };
+
+  const dashStats = { ...defaultStats, ...stats };
+
+  // Theme-aware colors
+  const theme = {
+    bg: isDarkMode ? 'bg-github-bg' : 'bg-gray-50',
+    card: isDarkMode ? 'bg-github-card' : 'bg-white',
+    border: isDarkMode ? 'border-github-border' : 'border-gray-200',
+    text: isDarkMode ? 'text-github-text' : 'text-gray-800',
+    textMuted: isDarkMode ? 'text-github-muted' : 'text-gray-500',
+    textWhite: isDarkMode ? 'text-white' : 'text-gray-900',
+    bgSecondary: isDarkMode ? 'bg-github-bg' : 'bg-gray-100',
+  };
+
   return (
-    <div className="flex-1 bg-[#0f1115] overflow-y-auto p-8 font-sans text-[#c9d1d9]">
-      <div className="flex justify-between items-end mb-10">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Centro de Comando</h1>
-          <p className="text-[#8b949e]">Resumen de operación en tiempo real • {new Date().toLocaleDateString()}</p>
-        </div>
-        <button onClick={navigateToWorkspace} className="bg-[#D4AF37] text-black px-6 py-3 rounded-lg font-bold hover:bg-white transition flex items-center gap-2">
-          <i className="fa-solid fa-rocket"></i> Ir a Bandeja de Entrada
-        </button>
-      </div>
+    <div className={`flex-1 ${theme.bg} overflow-y-auto font-sans ${theme.text} p-6 md:p-8`}>
+      <div className="max-w-7xl w-full mx-auto">
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-        <div className="bg-[#161b22] p-6 rounded-xl border border-[#30363d] relative overflow-hidden group hover:border-[#D4AF37] transition-colors">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><i className="fa-solid fa-inbox text-6xl text-white"></i></div>
-          <div className="text-[#8b949e] text-sm uppercase tracking-wider font-bold mb-2">Por Atender</div>
-          <div className="text-4xl font-bold text-white mb-1">{stats.pending}</div>
-          <div className="text-xs text-[#ff7b72] flex items-center gap-1"><i className="fa-solid fa-clock"></i> Pendientes</div>
-        </div>
-        <div className="bg-[#161b22] p-6 rounded-xl border border-[#30363d] relative overflow-hidden group hover:border-[#3fb950] transition-colors">
-           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><i className="fa-solid fa-star text-6xl text-[#3fb950]"></i></div>
-          <div className="text-[#8b949e] text-sm uppercase tracking-wider font-bold mb-2">Oportunidades</div>
-          <div className="text-4xl font-bold text-[#3fb950] mb-1">{stats.opportunities}</div>
-          <div className="text-xs text-[#8b949e]">Alta prioridad</div>
-        </div>
-        <div className="bg-[#161b22] p-6 rounded-xl border border-[#30363d] relative overflow-hidden group hover:border-[#ff7b72] transition-colors">
-           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><i className="fa-solid fa-filter text-6xl text-[#ff7b72]"></i></div>
-          <div className="text-[#8b949e] text-sm uppercase tracking-wider font-bold mb-2">Basura Filtrada</div>
-          <div className="text-4xl font-bold text-[#ff7b72] mb-1">{stats.trash}</div>
-          <div className="text-xs text-[#8b949e]">Auto-rechazados</div>
-        </div>
-        <div className="bg-[#161b22] p-6 rounded-xl border border-[#30363d] relative overflow-hidden">
-          <div className="text-[#8b949e] text-sm uppercase tracking-wider font-bold mb-4">Eficiencia IA</div>
-          <div className="flex items-end gap-2 mb-2">
-            <span className="text-4xl font-bold text-white">92%</span>
+        {/* Header Section */}
+        <div className={`flex justify-between items-end mb-8 border-b ${theme.border} pb-4`}>
+          <div>
+            <h2 className={`text-2xl font-bold ${theme.textWhite} mb-1`}>Centro de Comando</h2>
+            <p className={`text-sm ${theme.textMuted}`}>Resumen de operaciones en tiempo real</p>
           </div>
-          <div className="w-full bg-[#30363d] h-2 rounded-full overflow-hidden">
-            <div className="bg-[#D4AF37] h-full" style={{ width: '92%' }}></div>
-          </div>
-        </div>
-      </div>
-
-      {/* --- SECCIÓN RESTAURADA: FLUJO DE ENTRADA Y TERMÓMETRO --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Columna Izquierda: Actividad Reciente */}
-        <div className="lg:col-span-2 bg-[#161b22] rounded-xl border border-[#30363d] p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-white text-lg"><i className="fa-solid fa-bolt text-[#D4AF37] mr-2"></i> Tráfico Reciente</h3>
-            <button onClick={navigateToWorkspace} className="text-xs text-[#8b949e] hover:text-white">Ver todo</button>
-          </div>
-
-          <div className="space-y-4">
-            {/* Item 1 */}
-            <div className="flex items-center justify-between p-4 bg-[#0f1115] rounded-lg border-l-4 border-[#3fb950] hover:bg-[#21262d] transition-colors cursor-pointer" onClick={navigateToWorkspace}>
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#3fb950]/20 text-[#3fb950] flex items-center justify-center font-bold">CR</div>
-                <div>
-                  <div className="text-white font-bold">Carlos Ruiz</div>
-                  <div className="text-xs text-[#8b949e]">Detectado: Plata .720 • Hace 5 min</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs font-bold text-[#3fb950] bg-[#3fb950]/10 px-2 py-1 rounded mb-1">OPORTUNIDAD</div>
-                <div className="text-[10px] text-[#8b949e]">Gemini 1.5</div>
-              </div>
-            </div>
-
-            {/* Item 2 */}
-            <div className="flex items-center justify-between p-4 bg-[#0f1115] rounded-lg border-l-4 border-[#ff7b72] opacity-75 hover:opacity-100 transition-opacity">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#ff7b72]/20 text-[#ff7b72] flex items-center justify-center font-bold"><i className="fa-solid fa-ban"></i></div>
-                <div>
-                  <div className="text-white font-bold">+52 55 1234...</div>
-                  <div className="text-xs text-[#8b949e]">Detectado: Billete roto • Hace 12 min</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs font-bold text-[#ff7b72] bg-[#ff7b72]/10 px-2 py-1 rounded mb-1">BASURA</div>
-                <div className="text-[10px] text-[#8b949e]">Auto-rechazado</div>
-              </div>
-            </div>
-
-            {/* Item 3 */}
-            <div className="flex items-center justify-between p-4 bg-[#0f1115] rounded-lg border-l-4 border-[#D4AF37] hover:bg-[#21262d] transition-colors cursor-pointer" onClick={navigateToWorkspace}>
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] flex items-center justify-center font-bold">MG</div>
-                <div>
-                  <div className="text-white font-bold">Maria G.</div>
-                  <div className="text-xs text-[#8b949e]">Detectado: Centenario? • Hace 45 min</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="flex items-center justify-end gap-1 mb-1">
-                    <i className="fa-solid fa-triangle-exclamation text-[#e3b341]"></i>
-                    <div className="text-xs font-bold text-[#e3b341]">PENDIENTE</div>
-                </div>
-                <div className="text-[10px] text-[#ff7b72] font-bold">Atención requerida</div>
-              </div>
-            </div>
+          <div className="flex gap-2">
+            <span className={`text-xs ${isDarkMode ? 'bg-github-border text-github-text' : 'bg-gray-200 text-gray-700'} px-3 py-1 rounded-full flex items-center gap-2`}>
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Sistema Operativo
+            </span>
           </div>
         </div>
 
-        {/* Columna Derecha: Termómetro de Antigüedad */}
-        <div className="bg-[#161b22] rounded-xl border border-[#30363d] p-6">
-          <h3 className="font-bold text-white text-lg mb-6"><i className="fa-solid fa-stopwatch text-[#ff7b72] mr-2"></i> Antigüedad (Cola)</h3>
-          
-          <div className="relative h-64 flex gap-4">
-            {/* Barra lateral */}
-            <div className="w-1 bg-gradient-to-b from-[#3fb950] via-[#e3b341] to-[#ff7b72] rounded-full h-full relative">
-                <div className="absolute top-0 -left-6 text-[10px] text-[#3fb950]">Ahora</div>
-                <div className="absolute top-1/2 -left-6 text-[10px] text-[#e3b341]">30m</div>
-                <div className="absolute bottom-0 -left-6 text-[10px] text-[#ff7b72]">1h+</div>
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          {/* KPI 1 - Clientes Únicos */}
+          <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-purple-500 transition-colors group`}>
+            <div className="flex justify-between items-start mb-4">
+              <h3 className={`text-xs font-bold ${theme.textMuted} uppercase`}>Clientes Únicos</h3>
             </div>
+            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.uniqueClients}</div>
+            <div className={`text-xs ${theme.textMuted} flex items-center gap-1`}>
+              <Users size={12} /> Base de datos
+            </div>
+          </div>
 
-            {/* Bubbles */}
-            <div className="flex-1 relative">
-                <div className="absolute top-0 left-0 right-0 bg-[#0f1115] p-3 rounded border border-[#3fb950] mb-2 shadow-[0_0_10px_rgba(63,185,80,0.2)]">
-                    <div className="flex justify-between">
-                        <span className="text-xs font-bold text-white">Carlos R.</span>
-                        <span className="text-[10px] text-[#3fb950]">5 min</span>
+          {/* KPI 2 - Conversaciones */}
+          <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-blue-500 transition-colors group`}>
+            <div className="flex justify-between items-start mb-4">
+              <h3 className={`text-xs font-bold ${theme.textMuted} uppercase`}>Conversaciones</h3>
+              <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full border border-green-900/50">+12%</span>
+            </div>
+            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.conversations}</div>
+            <div className={`text-xs ${theme.textMuted} flex items-center gap-1`}>
+              <MessageCircle size={12} /> Activas este mes
+            </div>
+          </div>
+
+          {/* KPI 3 - Oportunidades */}
+          <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-yellow-500 transition-colors group`}>
+            <div className="flex justify-between items-start mb-4">
+              <h3 className={`text-xs font-bold ${theme.textMuted} uppercase`}>Oportunidades</h3>
+              <Star size={14} className="text-yellow-500" />
+            </div>
+            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.opportunities}</div>
+            <div className={`text-xs ${theme.textMuted}`}>Alta intención</div>
+          </div>
+
+          {/* KPI 4 - Intención */}
+          <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-green-500 transition-colors group`}>
+            <div className="flex justify-between items-start mb-4">
+              <h3 className={`text-xs font-bold ${theme.textMuted} uppercase`}>INTENCIÓN</h3>
+              <Target size={14} className="text-green-500" />
+            </div>
+            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.intention}%</div>
+            <div className={`text-xs ${theme.textMuted}`}>Conversión positiva</div>
+          </div>
+
+          {/* KPI 5 - Basura */}
+          <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-red-500 transition-colors group`}>
+            <div className="flex justify-between items-start mb-4">
+              <h3 className={`text-xs font-bold ${theme.textMuted} uppercase`}>BASURA</h3>
+              <Trash2 size={14} className="text-red-500" />
+            </div>
+            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.trash}</div>
+            <div className={`text-xs ${theme.textMuted}`}>Filtrados auto.</div>
+          </div>
+        </div>
+
+        {/* Content Grid Principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* COLUMNA IZQUIERDA (Ancha) */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
+
+            {/* 1. ESTADO DE BANDEJA */}
+            <div className={`${theme.card} border ${theme.border} rounded-lg p-6 shadow-sm relative overflow-hidden`}>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className={`font-bold ${theme.textWhite} text-sm flex items-center gap-2`}>
+                  <Inbox size={16} className={isDarkMode ? 'text-github-accent' : 'text-blue-500'} /> ESTADO DE BANDEJA
+                </h3>
+                <span className={`text-xs ${theme.textMuted} flex items-center gap-1`}>
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> En vivo
+                </span>
+              </div>
+
+              {/* Grid Horizontal para Bandeja */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+                {/* Card Sin Atender */}
+                <div className={`p-4 rounded-lg ${theme.bgSecondary} border ${theme.border} hover:border-red-500/50 transition-all cursor-pointer group`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 rounded-full bg-red-900/20 flex items-center justify-center text-red-400 group-hover:bg-red-900/30 transition">
+                      <Bell size={18} />
                     </div>
+                    <span className="text-xs text-red-400 font-bold bg-red-900/20 px-2 py-0.5 rounded border border-red-900/30">URGENTE</span>
+                  </div>
+                  <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.unattended}</div>
+                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Sin Atender</div>
                 </div>
-                <div className="absolute top-1/3 left-4 right-0 bg-[#0f1115] p-3 rounded border border-[#e3b341] opacity-80">
-                    <div className="flex justify-between">
-                         <span className="text-xs font-bold text-white">Cliente #402</span>
-                         <span className="text-[10px] text-[#e3b341]">25 min</span>
+
+                {/* Card Activas */}
+                <div className={`p-4 rounded-lg ${theme.bgSecondary} border ${theme.border} hover:border-blue-500/50 transition-all cursor-pointer group`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 rounded-full bg-blue-900/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-900/30 transition">
+                      <MessageCircle size={18} />
                     </div>
+                  </div>
+                  <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.active}</div>
+                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Activas</div>
+                  <div className={`w-full h-1 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full mt-3 overflow-hidden`}>
+                    <div className="h-full bg-blue-500 w-3/4"></div>
+                  </div>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 bg-[#0f1115] p-3 rounded border border-[#ff7b72] shadow-[0_0_15px_rgba(255,123,114,0.2)] animate-pulse">
-                     <div className="flex justify-between items-center">
-                         <span className="text-xs font-bold text-white">Maria G.</span>
-                         <div className="bg-[#ff7b72] text-black text-[10px] font-bold px-2 rounded">45m (Urgente)</div>
+
+                {/* Card Cerradas */}
+                <div className={`p-4 rounded-lg ${theme.bgSecondary} border ${theme.border} hover:border-green-500/50 transition-all cursor-pointer group`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 rounded-full bg-green-900/20 flex items-center justify-center text-green-400 group-hover:bg-green-900/30 transition">
+                      <Check size={18} />
                     </div>
+                    <span className={`text-xs ${theme.textMuted}`}>Hoy</span>
+                  </div>
+                  <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.closed}</div>
+                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Cerradas</div>
                 </div>
+
+              </div>
+            </div>
+
+            {/* 2. TOP CLIENTES ACTIVOS */}
+            <div className={`${theme.card} border ${theme.border} rounded-lg overflow-hidden flex flex-col`}>
+              <div className={`p-4 border-b ${theme.border} flex justify-between items-center ${isDarkMode ? 'bg-github-card/50' : 'bg-gray-50'}`}>
+                <h3 className={`font-bold ${theme.textWhite} text-sm`}>Top Clientes Activos</h3>
+                <button className={`text-xs ${isDarkMode ? 'text-github-accent' : 'text-blue-500'} hover:underline`}>Ver todos</button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className={`border-b ${theme.border} ${theme.textMuted} ${isDarkMode ? 'bg-github-bg/50' : 'bg-gray-50'} text-xs uppercase`}>
+                      <th className="px-4 py-3 font-semibold">Cliente</th>
+                      <th className="px-4 py-3 font-semibold">Actividad</th>
+                      <th className="px-4 py-3 font-semibold text-right">Último contacto</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${theme.border}`}>
+                    <tr className={`${isDarkMode ? 'hover:bg-github-border/20' : 'hover:bg-gray-50'} transition-colors`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} flex items-center justify-center font-bold ${theme.textWhite} text-xs`}>CR</div>
+                          <div>
+                            <div className={`font-bold ${theme.textWhite}`}>Carlos Ruiz</div>
+                            <div className={`text-[10px] ${theme.textMuted} uppercase font-bold`}>VIP</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className={`w-full max-w-[150px] h-1.5 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                          <div className="h-full bg-blue-500 w-[80%]"></div>
+                        </div>
+                        <div className={`text-[10px] ${theme.textMuted} mt-1`}>12 convs.</div>
+                      </td>
+                      <td className={`px-4 py-3 text-right font-mono text-xs ${theme.textMuted}`}>Hace 2h</td>
+                    </tr>
+                    <tr className={`${isDarkMode ? 'hover:bg-github-border/20' : 'hover:bg-gray-50'} transition-colors`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} flex items-center justify-center font-bold ${theme.textWhite} text-xs`}>MG</div>
+                          <div>
+                            <div className={`font-bold ${theme.textWhite}`}>Maria G.</div>
+                            <div className={`text-[10px] ${theme.textMuted} uppercase font-bold`}>Recurrente</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className={`w-full max-w-[150px] h-1.5 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                          <div className="h-full bg-blue-500 w-[50%]"></div>
+                        </div>
+                        <div className={`text-[10px] ${theme.textMuted} mt-1`}>8 convs.</div>
+                      </td>
+                      <td className={`px-4 py-3 text-right font-mono text-xs ${theme.textMuted}`}>Hace 5h</td>
+                    </tr>
+                    <tr className={`${isDarkMode ? 'hover:bg-github-border/20' : 'hover:bg-gray-50'} transition-colors`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} flex items-center justify-center font-bold ${theme.textWhite} text-xs`}>AL</div>
+                          <div>
+                            <div className={`font-bold ${theme.textWhite}`}>Ana Lopez</div>
+                            <div className={`text-[10px] ${theme.textMuted} uppercase font-bold`}>Nuevo</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className={`w-full max-w-[150px] h-1.5 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                          <div className="h-full bg-blue-500 w-[30%]"></div>
+                        </div>
+                        <div className={`text-[10px] ${theme.textMuted} mt-1`}>4 convs.</div>
+                      </td>
+                      <td className={`px-4 py-3 text-right font-mono text-xs ${theme.textMuted}`}>Ayer</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs text-[#8b949e]">El objetivo es mantener la cola en <span className="text-[#3fb950] font-bold">verde</span>.</p>
+          {/* COLUMNA DERECHA */}
+          <div className="space-y-6">
+
+            {/* Panel Stats IA */}
+            <div className={`${theme.card} border ${theme.border} rounded-lg p-6 shadow-sm`}>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className={`font-bold ${theme.textWhite} text-sm`}>FEEDBACK IA</h3>
+                <span className={`text-[10px] ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} px-2 py-1 rounded ${isDarkMode ? 'text-github-text' : 'text-gray-700'}`}>30 Días</span>
+              </div>
+
+              {/* Donut Chart */}
+              <div className="flex justify-center mb-6">
+                <div className="relative w-[140px] h-[140px]">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    {/* Background circle */}
+                    <circle cx="50" cy="50" r="40" fill="none" stroke={isDarkMode ? '#30363d' : '#e5e7eb'} strokeWidth="12" />
+                    {/* Positive segment (70%) */}
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#238636" strokeWidth="12"
+                      strokeDasharray="175.93 251.33" strokeDashoffset="0" />
+                    {/* Negative segment (15%) */}
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#f85149" strokeWidth="12"
+                      strokeDasharray="37.70 251.33" strokeDashoffset="-175.93" />
+                    {/* Trash segment (15%) */}
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#6e7681" strokeWidth="12"
+                      strokeDasharray="37.70 251.33" strokeDashoffset="-213.63" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`text-3xl font-black ${theme.textWhite}`}>70%</span>
+                    <span className={`text-[9px] ${theme.textMuted} uppercase mt-1`}>POSITIVA</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                {/* Positivo */}
+                <div>
+                  <div className={`flex justify-between text-xs mb-1.5 ${theme.text}`}>
+                    <span className="flex items-center gap-2 font-semibold">
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-600"></div> Positivo
+                    </span>
+                    <span className={`font-mono ${theme.textWhite}`}>145 (70%)</span>
+                  </div>
+                  <div className={`w-full h-2 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                    <div className="h-full bg-green-600" style={{ width: '70%' }}></div>
+                  </div>
+                </div>
+                {/* Negativo */}
+                <div>
+                  <div className={`flex justify-between text-xs mb-1.5 ${theme.text}`}>
+                    <span className="flex items-center gap-2 font-semibold">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> Negativo
+                    </span>
+                    <span className={`font-mono ${theme.textWhite}`}>31 (15%)</span>
+                  </div>
+                  <div className={`w-full h-2 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                    <div className="h-full bg-red-500" style={{ width: '15%' }}></div>
+                  </div>
+                </div>
+                {/* Basura */}
+                <div>
+                  <div className={`flex justify-between text-xs mb-1.5 ${theme.text}`}>
+                    <span className="flex items-center gap-2 font-semibold">
+                      <div className="w-2.5 h-2.5 rounded-full bg-gray-500"></div> Basura
+                    </span>
+                    <span className={`font-mono ${theme.textWhite}`}>31 (15%)</span>
+                  </div>
+                  <div className={`w-full h-2 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                    <div className="h-full bg-gray-500" style={{ width: '15%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
+
         </div>
       </div>
     </div>

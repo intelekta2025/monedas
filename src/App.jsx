@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
+import DashboardHome from './components/DashboardHome';
 import { getWhatsappPhones } from './services/whatsappService';
 import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToAllMessagesByPhone, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
 import { supabase } from './services/supabase';
@@ -215,7 +216,7 @@ const App = () => {
   const [feedback, setFeedback] = useState(null);
 
   const [simulatedDevice, setSimulatedDevice] = useState('desktop');
-  const [showDeviceBar, setShowDeviceBar] = useState(false); // Solo para testing, oculto por defecto
+  const [showDeviceBar, setShowDeviceBar] = useState(false); // Barra de simulación desactivada
   const [currentView, setCurrentView] = useState('main'); // 'main' | 'settings'
   const chatContainerRef = useRef(null);
   const currentChatIdRef = useRef(null); // Para evitar race conditions en carga de mensajes
@@ -996,7 +997,20 @@ const App = () => {
                 {isMobileView && <button className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}><Menu size={20} className={theme.textMuted} /></button>}
                 {!isMobileView && (
                   <>
-                    <button className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><LayoutGrid size={16} /> <span className="hidden xl:inline">Dashboard</span></button>
+                    <button
+                      onClick={() => setCurrentView(currentView === 'dashboard' ? 'main' : 'dashboard')}
+                      className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
+                    >
+                      {currentView === 'dashboard' ? (
+                        <>
+                          <ArrowLeft size={16} /> <span className="hidden xl:inline">Bandeja</span>
+                        </>
+                      ) : (
+                        <>
+                          <LayoutGrid size={16} /> <span className="hidden xl:inline">Dashboard</span>
+                        </>
+                      )}
+                    </button>
                     <button onClick={() => setCurrentView('settings')} className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><Settings size={16} /></button>
                     <div className={`w-9 h-9 rounded-full ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-200 border-gray-300'} flex items-center justify-center border cursor-pointer`}><User size={18} className={theme.textMuted} /></div>
                     <button
@@ -1017,6 +1031,21 @@ const App = () => {
               <SettingsView
                 onBack={() => setCurrentView('main')}
                 isDarkMode={isDarkMode}
+              />
+            ) : currentView === 'dashboard' ? (
+              <DashboardHome
+                navigateToWorkspace={() => setCurrentView('main')}
+                navigateToClients={() => setCurrentView('clients')}
+                isDarkMode={isDarkMode}
+                stats={{
+                  uniqueClients: conversations.length,
+                  conversations: conversations.length,
+                  opportunities: conversations.filter(c => c.classification === 'opportunity').length,
+                  trash: conversations.filter(c => c.classification === 'trash').length,
+                  unattended: conversations.filter(c => c.unread_count > 0).length,
+                  active: conversations.filter(c => c.status === 'open').length,
+                  closed: 0
+                }}
               />
             ) : (
               <main className={`flex-1 flex overflow-hidden ${isMobileView ? 'p-0' : 'p-4 lg:p-6 lg:gap-6'} relative`}>
