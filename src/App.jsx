@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
 import { getWhatsappPhones } from './services/whatsappService';
 import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToAllMessagesByPhone, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
+import { supabase } from './services/supabase';
 
 import {
   MessageCircle,
