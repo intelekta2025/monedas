@@ -1079,11 +1079,11 @@ const App = () => {
             ) : (
               <main className={`flex-1 flex overflow-hidden ${isMobileView ? 'p-0' : 'p-4 lg:p-6 lg:gap-6'} relative`}>
 
-                {/* COLUMNA 1: LISTA */}
+                {/* COLUMNA 1: LISTA (Ancho fijo en tablet/desktop) */}
                 <div className={`
-                ${isCompactView && selectedChat ? 'hidden' : 'flex'} 
-                ${isMobileView ? 'w-full' : isTabletView ? 'w-[280px]' : 'w-80'} flex-shrink-0 flex-col 
-                ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} transition-colors duration-300
+                ${isCompactView ? (!selectedChat ? 'flex' : 'hidden') : 'flex'} 
+                ${isMobileView ? 'w-full' : 'w-[320px]'} flex-col flex-shrink-0
+                ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} overflow-hidden relative transition-colors duration-300
               `}>
                   <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
                     <h2 className={`font-bold text-sm ${theme.text} flex items-center gap-2`}><MessageCircle size={18} className={theme.accent} /> Mensajes</h2>
@@ -1168,7 +1168,7 @@ const App = () => {
                 {/* COLUMNA 2: CHAT */}
                 <div className={`
                 ${isCompactView ? (selectedChat && !showMobileInfo ? 'flex' : 'hidden') : 'flex'} 
-                ${isMobileView ? 'flex-1' : isTabletView ? 'flex-1' : 'w-[600px]'} flex-col flex-shrink-0
+                ${isMobileView ? 'flex-1' : 'flex-1'} flex-col flex-shrink-0
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} overflow-hidden relative transition-colors duration-300 z-10
               `}>
                   {selectedChat ? (
@@ -1348,7 +1348,7 @@ const App = () => {
                 {/* COLUMNA 3: IA */}
                 <div className={`
                 ${isCompactView ? (showMobileInfo ? 'flex absolute inset-0 z-50' : 'hidden') : 'flex'} 
-                ${isCompactView ? 'w-full h-full' : 'flex-1'} flex-col 
+                ${isCompactView ? 'w-full h-full' : isTabletView ? 'w-80 flex-shrink-0' : 'flex-1'} flex-col 
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} transition-colors duration-300 overflow-hidden
               `}>
                   {isCompactView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-gold" /><h2 className="font-bold text-sm text-gold">Análisis IA</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
