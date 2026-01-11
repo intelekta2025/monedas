@@ -70,7 +70,7 @@ export const getMessages = async (conversationId, limit = 50, options = {}) => {
             .from('whatsapp_messages')
             .select(`
           *,
-          media:whatsapp_message_media(id, media_index, media_url, media_content_type, ai_analysis)
+          media:whatsapp_message_media(id, media_index, media_url, media_content_type, ai_analysis, ai_feedback)
         `)
             .eq('conversation_id', conversationId)
             .order('created_at', { ascending: false }) // Obtener los más recientes primero
@@ -121,7 +121,7 @@ export const getMessagesByClient = async (clientId, phoneId, status = null, limi
         .from('whatsapp_messages')
         .select(`
       *,
-      media:whatsapp_message_media(id, media_index, media_url, media_content_type, ai_analysis)
+      media:whatsapp_message_media(id, media_index, media_url, media_content_type, ai_analysis, ai_feedback)
     `)
         .in('conversation_id', conversationIds)
         .order('created_at', { ascending: false })

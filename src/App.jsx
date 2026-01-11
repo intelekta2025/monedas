@@ -677,7 +677,8 @@ const App = () => {
                     analyses.push({
                       ...parsed,
                       media_url: m.media_url,
-                      media_id: m.id
+                      media_id: m.id,
+                      user_feedback: m.ai_feedback // Incluir feedback existente
                     });
                   } catch (e) {
                     console.error('Error parsing ai_analysis:', e);
@@ -785,6 +786,27 @@ const App = () => {
         ...prev,
         name: updatedClient.full_name || prev.name
       }));
+    }
+  };
+
+  const handleFeedback = async (type) => {
+    const currentAnalysis = conversationAnalyses[currentAnalysisIndex];
+    if (!currentAnalysis?.media_id) return;
+
+    // Optimistic update
+    const newAnalyses = [...conversationAnalyses];
+    newAnalyses[currentAnalysisIndex] = { ...currentAnalysis, user_feedback: type };
+    setConversationAnalyses(newAnalyses);
+
+    try {
+      const { error } = await supabase
+        .from('whatsapp_message_media')
+        .update({ ai_feedback: type })
+        .eq('id', currentAnalysis.media_id);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error updating feedback:', err);
     }
   };
 
@@ -915,7 +937,7 @@ const App = () => {
                 </div>
                 <div className="flex flex-col">
                   <span className={`font-serif font-bold ${simulatedDevice === 'mobile' ? 'text-base' : 'text-lg'} tracking-wide ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                    Bazar de moneda
+                    Bazar de monedas
                   </span>
                   {!isMobileView && (
                     <span className={`text-[10px] uppercase tracking-widest font-bold ${theme.accent}`}>
@@ -1365,8 +1387,8 @@ const App = () => {
                             {/* Feedback buttons */}
                             <div className={`pt-4 mt-4 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex items-center justify-end gap-1`}>
                               <p className={`text-[9px] uppercase font-bold mr-2 ${theme.textMuted}`}>¿Correcto?</p>
-                              <button onClick={() => setFeedback('up')} className={`p-1.5 rounded transition-colors ${feedback === 'up' ? 'text-green-500 bg-green-500/10' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button>
-                              <button onClick={() => setFeedback('down')} className={`p-1.5 rounded transition-colors ${feedback === 'down' ? 'text-red-500 bg-red-500/10' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button>
+                              <button onClick={() => handleFeedback('positive')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'positive' ? 'text-green-500 bg-green-500/10 scale-110' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button>
+                              <button onClick={() => handleFeedback('negative')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'negative' ? 'text-red-500 bg-red-500/10 scale-110' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button>
                             </div>
                           </div>
                         ) : (
