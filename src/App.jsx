@@ -433,28 +433,23 @@ const App = () => {
   }, [selectedConversation?.client_id, selectedPhone?.id, showClosedConversations]);
 
   // --- Wake-Up Handler: Recuperar conexión al volver a la pestaña ---
-  const lastVisibilityRef = useRef(0);
   useEffect(() => {
     const handleVisibilityChange = async () => {
-      const now = Date.now();
-      const timeSinceLastCheck = now - lastVisibilityRef.current;
-
-
       if (document.visibilityState === 'visible') {
-        lastVisibilityRef.current = now;
+        console.log("📱 App en primer plano. Verificando estado...");
 
-        // Solo refrescar si hay un error persistente (pero fuerza refresh desactivada)
-        try {
-          await forceSessionRefresh();
-        } catch (e) {
-          // Ignorar
+        // 1. Reconectar Realtime si se desconectó
+        const status = supabase.channel('ping').subscribe();
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          // Solo si el socket murió, recargamos datos críticos
+          if (selectedPhone?.id) getConversations(selectedPhone.id).then(setConversations);
         }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [loadError]);
+  }, [selectedPhone]);
 
   // --- ESC key handler para cerrar modal de imagen ---
   useEffect(() => {
