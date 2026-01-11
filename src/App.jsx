@@ -957,7 +957,7 @@ const App = () => {
                   <Coins className="text-white" size={simulatedDevice === 'mobile' ? 18 : 20} />
                 </div>
                 <div className="flex flex-col">
-                  <span className={`font-serif font-bold ${simulatedDevice === 'mobile' ? 'text-base' : 'text-lg'} tracking-wide ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                  <span className={`font-serif font-bold ${simulatedDevice === 'mobile' ? 'text-xs leading-tight' : 'text-lg'} tracking-wide ${isDarkMode ? 'text-white' : 'text-black'}`}>
                     BAZAR DE MONEDAS ANTIGUAS
                   </span>
                   {!isMobileView && (
