@@ -557,7 +557,22 @@ const App = () => {
         // 1. Si el mensaje pertenece al chat que estamos viendo, lo añadimos a la vista
         if (newMessage.conversation_id === selectedChatRef.current?.conversationId) {
           setChatMessages(prev => {
+            // Si ya existe el ID real, ignorar
             if (prev.find(m => m.id === newMessage.id)) return prev;
+
+            // Si es un mensaje SALIENTE (nuestro), buscar si hay un temporal atrapado
+            // (Mensaje optimista que agregamos al enviar)
+            if (newMessage.direction === 'outbound') {
+              const tempIndex = prev.findIndex(m => m.id.toString().startsWith('temp-') && m.body === newMessage.body);
+
+              if (tempIndex !== -1) {
+                // Reemplazar el temporal con el real
+                const newMessages = [...prev];
+                newMessages[tempIndex] = newMessage;
+                return newMessages;
+              }
+            }
+
             return [...prev, newMessage];
           });
 
