@@ -111,7 +111,7 @@ const ClientEditModal = ({ isOpen, onClose, clientId, currentName, onClientUpdat
                 {/* Header */}
                 <div className={`flex items-center justify-between p-4 border-b ${isDarkMode ? 'border-slate-800' : 'border-gray-100'}`}>
                     <h3 className={`font-bold text-lg flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                        <User size={20} className="text-emerald-500" />
+                        <User size={20} className="text-gold" />
                         Editar Cliente
                     </h3>
                     <button onClick={onClose} className={`p-2 rounded-full hover:bg-opacity-10 transition-colors ${isDarkMode ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-500'}`}>
@@ -123,7 +123,7 @@ const ClientEditModal = ({ isOpen, onClose, clientId, currentName, onClientUpdat
                 <div className="p-6">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-8 gap-3">
-                            <Loader2 size={30} className="animate-spin text-emerald-500" />
+                            <Loader2 size={30} className="animate-spin text-gold" />
                             <p className={`text-sm ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>Cargando datos...</p>
                         </div>
                     ) : (
@@ -135,9 +135,9 @@ const ClientEditModal = ({ isOpen, onClose, clientId, currentName, onClientUpdat
                                     type="text"
                                     value={firstName}
                                     onChange={(e) => setFirstName(e.target.value)}
-                                    className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${isDarkMode
-                                        ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-emerald-500/50'
-                                        : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-emerald-500'}`}
+                                    className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-gold/50 transition-all ${isDarkMode
+                                        ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-gold/50'
+                                        : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-gold'}`}
                                     placeholder="Ej. Juan Carlos"
                                 />
                             </div>
@@ -149,9 +149,9 @@ const ClientEditModal = ({ isOpen, onClose, clientId, currentName, onClientUpdat
                                         type="text"
                                         value={paternalSurname}
                                         onChange={(e) => setPaternalSurname(e.target.value)}
-                                        className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${isDarkMode
-                                            ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-emerald-500/50'
-                                            : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-emerald-500'}`}
+                                        className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-gold/50 transition-all ${isDarkMode
+                                            ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-gold/50'
+                                            : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-gold'}`}
                                         placeholder="Ej. Pérez"
                                     />
                                 </div>
@@ -161,9 +161,9 @@ const ClientEditModal = ({ isOpen, onClose, clientId, currentName, onClientUpdat
                                         type="text"
                                         value={maternalSurname}
                                         onChange={(e) => setMaternalSurname(e.target.value)}
-                                        className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${isDarkMode
-                                            ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-emerald-500/50'
-                                            : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-emerald-500'}`}
+                                        className={`w-full p-3 rounded-xl border outline-none focus:ring-2 focus:ring-gold/50 transition-all ${isDarkMode
+                                            ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-gold/50'
+                                            : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-gold'}`}
                                         placeholder="Ej. López"
                                     />
                                 </div>
@@ -172,7 +172,7 @@ const ClientEditModal = ({ isOpen, onClose, clientId, currentName, onClientUpdat
                             {/* Preview */}
                             <div className={`mt-4 p-3 rounded-lg border border-dashed text-center ${isDarkMode ? 'bg-slate-800/30 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
                                 <p className={`text-xs mb-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-500'}`}>Vista Previa</p>
-                                <p className={`font-medium ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                <p className={`font-medium ${isDarkMode ? 'text-gold' : 'text-gold-dark'}`}>
                                     {[firstName, paternalSurname, maternalSurname].filter(Boolean).join(' ') || 'Sin nombre'}
                                 </p>
                             </div>
@@ -181,7 +181,7 @@ const ClientEditModal = ({ isOpen, onClose, clientId, currentName, onClientUpdat
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="bg-gold-dark hover:bg-gold text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-gold/20 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                                     Guardar Cambios

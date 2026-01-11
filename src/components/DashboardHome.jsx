@@ -51,7 +51,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
         {/* Header Section */}
         <div className={`flex justify-between items-end mb-8 border-b ${theme.border} pb-4`}>
           <div>
-            <h2 className={`text-2xl font-bold ${theme.textWhite} mb-1`}>Centro de Comando</h2>
+            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} mb-1`}>Centro de Comando</h2>
             <p className={`text-sm ${theme.textMuted}`}>Resumen de operaciones en tiempo real</p>
           </div>
           <div className="flex gap-2">
@@ -66,7 +66,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
           {/* KPI 1 - Clientes Únicos */}
           <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-purple-500 transition-colors group`}>
             <div className="flex justify-between items-start mb-4">
-              <h3 className={`text-xs font-bold ${theme.textMuted} uppercase`}>Clientes Únicos</h3>
+              <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>Clientes Únicos</h3>
             </div>
             <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.uniqueClients}</div>
             <div className={`text-xs ${theme.textMuted} flex items-center gap-1`}>
@@ -77,7 +77,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
           {/* KPI 2 - Conversaciones */}
           <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-blue-500 transition-colors group`}>
             <div className="flex justify-between items-start mb-4">
-              <h3 className={`text-xs font-bold ${theme.textMuted} uppercase`}>Conversaciones</h3>
+              <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>Conversaciones</h3>
               <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full border border-green-900/50">+12%</span>
             </div>
             <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.conversations}</div>
@@ -89,7 +89,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
           {/* KPI 3 - Oportunidades */}
           <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-yellow-500 transition-colors group`}>
             <div className="flex justify-between items-start mb-4">
-              <h3 className={`text-xs font-bold ${theme.textMuted} uppercase`}>Oportunidades</h3>
+              <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>Oportunidades</h3>
               <Star size={14} className="text-yellow-500" />
             </div>
             <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.opportunities}</div>
@@ -99,7 +99,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
           {/* KPI 4 - Intención */}
           <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-green-500 transition-colors group`}>
             <div className="flex justify-between items-start mb-4">
-              <h3 className={`text-xs font-bold ${theme.textMuted} uppercase`}>INTENCIÓN</h3>
+              <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>INTENCIÓN</h3>
               <Target size={14} className="text-green-500" />
             </div>
             <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.intention}%</div>
@@ -109,7 +109,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
           {/* KPI 5 - Basura */}
           <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-red-500 transition-colors group`}>
             <div className="flex justify-between items-start mb-4">
-              <h3 className={`text-xs font-bold ${theme.textMuted} uppercase`}>BASURA</h3>
+              <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>BASURA</h3>
               <Trash2 size={14} className="text-red-500" />
             </div>
             <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.trash}</div>
@@ -126,8 +126,8 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
             {/* 1. ESTADO DE BANDEJA */}
             <div className={`${theme.card} border ${theme.border} rounded-lg p-6 shadow-sm relative overflow-hidden`}>
               <div className="flex justify-between items-center mb-4">
-                <h3 className={`font-bold ${theme.textWhite} text-sm flex items-center gap-2`}>
-                  <Inbox size={16} className={isDarkMode ? 'text-github-accent' : 'text-blue-500'} /> ESTADO DE BANDEJA
+                <h3 className={`font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} text-sm flex items-center gap-2`}>
+                  <Inbox size={16} className={isDarkMode ? 'text-gold' : 'text-gold-dark'} /> ESTADO DE BANDEJA
                 </h3>
                 <span className={`text-xs ${theme.textMuted} flex items-center gap-1`}>
                   <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> En vivo
@@ -181,7 +181,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
             {/* 2. TOP CLIENTES ACTIVOS */}
             <div className={`${theme.card} border ${theme.border} rounded-lg overflow-hidden flex flex-col`}>
               <div className={`p-4 border-b ${theme.border} flex justify-between items-center ${isDarkMode ? 'bg-github-card/50' : 'bg-gray-50'}`}>
-                <h3 className={`font-bold ${theme.textWhite} text-sm`}>Top Clientes Activos</h3>
+                <h3 className={`font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} text-sm`}>Top Clientes Activos</h3>
                 <button className={`text-xs ${isDarkMode ? 'text-github-accent' : 'text-blue-500'} hover:underline`}>Ver todos</button>
               </div>
               <div className="overflow-x-auto">
@@ -260,7 +260,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
             {/* Panel Stats IA */}
             <div className={`${theme.card} border ${theme.border} rounded-lg p-6 shadow-sm`}>
               <div className="flex justify-between items-center mb-6">
-                <h3 className={`font-bold ${theme.textWhite} text-sm`}>FEEDBACK IA</h3>
+                <h3 className={`font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} text-sm`}>FEEDBACK IA</h3>
                 <span className={`text-[10px] ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} px-2 py-1 rounded ${isDarkMode ? 'text-github-text' : 'text-gray-700'}`}>30 Días</span>
               </div>
 

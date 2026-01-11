@@ -78,21 +78,21 @@ const LoginScreen = ({ isDarkMode, toggleTheme }) => {
     <div className={`min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
       {/* Fondo decorativo */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px]"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold/10 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]"></div>
       </div>
 
       <div className={`w-full max-w-md backdrop-blur-xl border p-8 rounded-3xl shadow-2xl relative z-10 transition-colors duration-300 ${isDarkMode
         ? 'bg-slate-900/80 border-slate-800'
-        : 'bg-white/80 border-gray-200/50 shadow-emerald-500/5'
+        : 'bg-white/80 border-gray-200/50 shadow-gold/5'
         }`}>
 
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
           className={`absolute top-4 right-4 p-2 rounded-full transition-all ${isDarkMode
-            ? 'hover:bg-slate-800 text-slate-400 hover:text-emerald-400'
-            : 'hover:bg-gray-100 text-gray-400 hover:text-emerald-600'
+            ? 'hover:bg-slate-800 text-slate-400 hover:text-gold-light'
+            : 'hover:bg-gray-100 text-gray-400 hover:text-gold-dark'
             }`}
           title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
         >
@@ -100,13 +100,18 @@ const LoginScreen = ({ isDarkMode, toggleTheme }) => {
         </button>
 
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 p-3 rounded-2xl shadow-lg shadow-emerald-500/20 mb-4">
+          <div className="bg-gradient-to-br from-gold-light to-gold-dark p-3 rounded-2xl shadow-lg shadow-gold/20 mb-4">
             <Coins className="text-white" size={32} />
           </div>
-          <h1 className={`font-serif font-bold text-2xl tracking-wide transition-colors ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-            Bazar de monedas
-          </h1>
-          <p className="text-xs uppercase tracking-[0.2em] font-bold text-emerald-500 mt-2">Acceso Administrativo</p>
+          <div className="flex flex-col items-center gap-1 text-center">
+            <h1 className={`font-serif font-bold text-xl tracking-wide transition-colors ${isDarkMode ? 'text-white' : 'text-black'}`}>
+              Bazar de
+            </h1>
+            <h1 className={`font-serif font-extrabold text-3xl tracking-wide transition-colors ${isDarkMode ? 'text-white' : 'text-black'}`}>
+              Monedas Antiguas
+            </h1>
+            <p className="text-sm uppercase tracking-[0.2em] font-bold text-gold mt-1">Desde 1536</p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -124,14 +129,14 @@ const LoginScreen = ({ isDarkMode, toggleTheme }) => {
           <div className="space-y-1">
             <label className={`text-xs font-bold ml-1 uppercase transition-colors ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Email</label>
             <div className="relative group">
-              <User className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isDarkMode ? 'text-slate-500' : 'text-gray-400'} group-focus-within:text-emerald-500`} size={18} />
+              <User className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isDarkMode ? 'text-slate-500' : 'text-gray-400'} group-focus-within:text-gold`} size={18} />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={`w-full border rounded-xl py-3 pl-10 pr-4 outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-emerald-500/50 ${isDarkMode
-                  ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-emerald-500/50'
-                  : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-emerald-500'
+                className={`w-full border rounded-xl py-3 pl-10 pr-4 outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-gold/50 ${isDarkMode
+                  ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-gold/50'
+                  : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-gold'
                   }`}
                 placeholder="tu@email.com"
                 required
@@ -142,14 +147,14 @@ const LoginScreen = ({ isDarkMode, toggleTheme }) => {
           <div className="space-y-1">
             <label className={`text-xs font-bold ml-1 uppercase transition-colors ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Contraseña</label>
             <div className="relative group">
-              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isDarkMode ? 'text-slate-500' : 'text-gray-400'} group-focus-within:text-emerald-500`} size={18} />
+              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isDarkMode ? 'text-slate-500' : 'text-gray-400'} group-focus-within:text-gold`} size={18} />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className={`w-full border rounded-xl py-3 pl-10 pr-4 outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-emerald-500/50 ${isDarkMode
-                  ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-emerald-500/50'
-                  : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-emerald-500'
+                className={`w-full border rounded-xl py-3 pl-10 pr-4 outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-gold/50 ${isDarkMode
+                  ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-gold/50'
+                  : 'bg-gray-50 border-gray-200 text-gray-800 focus:border-gold'
                   }`}
                 placeholder="••••••••"
                 required
@@ -159,7 +164,7 @@ const LoginScreen = ({ isDarkMode, toggleTheme }) => {
 
           <div className={`flex items-center justify-between text-xs pt-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
             <label className={`flex items-center gap-2 cursor-pointer ${isDarkMode ? 'hover:text-slate-300' : 'hover:text-gray-700'}`}>
-              <input type="checkbox" className={`rounded text-emerald-500 focus:ring-emerald-500/20 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`} />
+              <input type="checkbox" className={`rounded text-gold focus:ring-gold/20 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`} />
               Recordarme
             </label>
             <span className={`opacity-50 cursor-not-allowed flex items-center gap-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`} title="Funcionalidad en desarrollo">
@@ -170,7 +175,7 @@ const LoginScreen = ({ isDarkMode, toggleTheme }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-gold to-gold-dark hover:from-gold-light hover:to-gold text-white font-bold py-3.5 rounded-xl shadow-lg shadow-gold/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
@@ -636,7 +641,7 @@ const App = () => {
 
   const isMobileView = simulatedDevice === 'mobile';
   const isTabletView = simulatedDevice === 'tablet';
-  const isCompactView = isMobileView || isTabletView; // Móvil o Tablet: panel de análisis como overlay
+  const isCompactView = isMobileView; // Tablet shows 3 columns layout now
 
   const handleChatSelect = async (chat) => {
     // Si ya estamos en este chat, no recargar (evita loop de desconexión/conexión)
@@ -779,9 +784,9 @@ const App = () => {
     cardBorder: isDarkMode ? 'border-slate-800' : 'border-gray-200',
     headerBg: isDarkMode ? 'bg-slate-900' : 'bg-white',
     inputBg: isDarkMode ? 'bg-slate-950' : 'bg-gray-100',
-    accent: 'text-emerald-500',
+    accent: 'text-gold',
     chatBubbleUser: isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200 shadow-sm',
-    chatBubbleBot: isDarkMode ? 'bg-emerald-900/20 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200',
+    chatBubbleBot: isDarkMode ? 'bg-gold-dark/20 border-gold/20' : 'bg-yellow-50 border-yellow-200',
   };
 
   const handleClientUpdated = (updatedClient) => {
@@ -917,7 +922,7 @@ const App = () => {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 size={48} className="animate-spin text-emerald-500" />
+          <Loader2 size={48} className="animate-spin text-gold" />
           <p className="text-slate-400 text-sm">Cargando...</p>
         </div>
       </div>
@@ -935,9 +940,9 @@ const App = () => {
       {showDeviceBar && (
         <div className="flex items-center justify-center gap-4 bg-black/80 text-slate-400 py-2 border-b border-white/10 z-50 flex-shrink-0">
           <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Vista Previa:</span>
-          <button onClick={() => setSimulatedDevice('mobile')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'mobile' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'hover:bg-white/10'}`}><Smartphone size={14} /> Celular</button>
-          <button onClick={() => setSimulatedDevice('tablet')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'tablet' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'hover:bg-white/10'}`}><Tablet size={14} /> Tablet</button>
-          <button onClick={() => setSimulatedDevice('desktop')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'desktop' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'hover:bg-white/10'}`}><Monitor size={14} /> PC</button>
+          <button onClick={() => setSimulatedDevice('mobile')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'mobile' ? 'bg-gold text-white shadow-lg shadow-gold/20' : 'hover:bg-white/10'}`}><Smartphone size={14} /> Celular</button>
+          <button onClick={() => setSimulatedDevice('tablet')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'tablet' ? 'bg-gold text-white shadow-lg shadow-gold/20' : 'hover:bg-white/10'}`}><Tablet size={14} /> Tablet</button>
+          <button onClick={() => setSimulatedDevice('desktop')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${simulatedDevice === 'desktop' ? 'bg-gold text-white shadow-lg shadow-gold/20' : 'hover:bg-white/10'}`}><Monitor size={14} /> PC</button>
         </div>
       )}
 
@@ -948,24 +953,24 @@ const App = () => {
 
             <header className={`h-14 lg:h-16 ${theme.headerBg} border-b ${theme.cardBorder} flex items-center justify-between px-4 lg:px-6 flex-shrink-0 z-20 shadow-sm transition-colors duration-300`}>
               <div className="flex items-center gap-2 lg:gap-3">
-                <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 p-1.5 rounded-xl shadow-lg shadow-emerald-500/20">
+                <div className="bg-gradient-to-br from-gold-light to-gold-dark p-1.5 rounded-xl shadow-lg shadow-gold/20">
                   <Coins className="text-white" size={simulatedDevice === 'mobile' ? 18 : 20} />
                 </div>
                 <div className="flex flex-col">
-                  <span className={`font-serif font-bold ${simulatedDevice === 'mobile' ? 'text-base' : 'text-lg'} tracking-wide ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                    Bazar de monedas
+                  <span className={`font-serif font-bold ${simulatedDevice === 'mobile' ? 'text-base' : 'text-lg'} tracking-wide ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                    BAZAR DE MONEDAS ANTIGUAS
                   </span>
                   {!isMobileView && (
                     <span className={`text-[10px] uppercase tracking-widest font-bold ${theme.accent}`}>
-                      Inteligencia Numismática
+                      Desde 1536
                     </span>
                   )}
                 </div>
               </div>
 
               {!isMobileView && (
-                <div className={`flex items-center ${theme.inputBg} rounded-xl px-4 py-2 w-1/3 border border-transparent focus-within:border-emerald-500/50 transition-all group`}>
-                  <Search size={18} className={`${theme.textMuted} group-focus-within:text-emerald-500 transition-colors`} />
+                <div className={`flex items-center ${theme.inputBg} rounded-xl px-4 py-2 w-1/3 border border-transparent focus-within:border-gold/50 transition-all group`}>
+                  <Search size={18} className={`${theme.textMuted} group-focus-within:text-gold transition-colors`} />
                   <input type="text" placeholder="Buscar..." className={`bg-transparent border-none outline-none ml-3 w-full text-sm ${theme.text} placeholder-opacity-50`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   {searchQuery && <button onClick={() => setSearchQuery('')} className="text-gray-500 hover:text-white"><X size={14} /></button>}
                 </div>
@@ -974,7 +979,7 @@ const App = () => {
               {/* Selector de Teléfono WhatsApp */}
               {!isMobileView && whatsappPhones.length > 0 && (
                 <div className={`flex items-center gap-2 ${theme.inputBg} rounded-xl px-3 py-2 border ${theme.cardBorder}`}>
-                  <Phone size={16} className="text-green-500" />
+                  <Phone size={16} className="text-gold" />
                   <select
                     value={selectedPhone?.id || ''}
                     onChange={(e) => {
@@ -993,7 +998,7 @@ const App = () => {
               )}
 
               <div className="flex items-center gap-2">
-                <button onClick={toggleTheme} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-slate-800 text-emerald-400' : 'hover:bg-gray-100 text-slate-600'}`}>{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
+                <button onClick={toggleTheme} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-slate-800 text-gold-light' : 'hover:bg-gray-100 text-slate-600'}`}>{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
                 {!isMobileView && (
                   <>
                     <button
@@ -1092,7 +1097,7 @@ const App = () => {
                         <Archive size={12} />
                         <span className="hidden sm:inline">{showClosedConversations ? 'Cerradas' : 'Abiertas'}</span>
                       </button>
-                      <button onClick={cycleDateFilter} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${dateFilter !== 'any' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : `${theme.textMuted} hover:bg-slate-800/50`}`}><Calendar size={12} /><span className={`${isMobileView ? 'hidden' : 'hidden sm:inline'}`}>{dateFilter === 'today' ? 'Hoy' : dateFilter === 'week' ? '7 Días' : 'Fecha'}</span></button>
+                      <button onClick={cycleDateFilter} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${dateFilter !== 'any' ? 'bg-gold text-white shadow-lg shadow-gold/20' : `${theme.textMuted} hover:bg-slate-800/50`}`}><Calendar size={12} /><span className={`${isMobileView ? 'hidden' : 'hidden sm:inline'}`}>{dateFilter === 'today' ? 'Hoy' : dateFilter === 'week' ? '7 Días' : 'Fecha'}</span></button>
                       <div className={`text-[10px] font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-gray-100 text-gray-500'}`}>{filteredChats.length}</div>
                     </div>
                   </div>
@@ -1100,7 +1105,7 @@ const App = () => {
                     <div className={`flex justify-between items-center p-1.5 rounded-xl ${isDarkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
                       <FilterIconButton active={activeTab === 'todos'} onClick={() => setActiveTab('todos')} icon={<Inbox size={16} />} title="Todos" isDark={isDarkMode} />
                       <div className="w-px h-4 bg-gray-500/20 mx-1"></div>
-                      <FilterIconButton active={activeTab === 'oportunidades'} onClick={() => setActiveTab('oportunidades')} icon={<Star size={16} />} title="Oportunidades" color="text-emerald-500" isDark={isDarkMode} />
+                      <FilterIconButton active={activeTab === 'oportunidades'} onClick={() => setActiveTab('oportunidades')} icon={<Star size={16} />} title="Oportunidades" color="text-gold" isDark={isDarkMode} />
                       <FilterIconButton active={activeTab === 'consultas'} onClick={() => setActiveTab('consultas')} icon={<ShoppingBag size={16} />} title="Intención" color="text-blue-500" isDark={isDarkMode} />
                       <FilterIconButton active={activeTab === 'basura'} onClick={() => setActiveTab('basura')} icon={<Trash2 size={16} />} title="Papelera" color="text-gray-500" isDark={isDarkMode} />
                     </div>
@@ -1119,7 +1124,7 @@ const App = () => {
                     {/* Indicador de carga */}
                     {phonesLoading && !connectionError && (
                       <div className="flex flex-col items-center justify-center py-8">
-                        <Loader2 size={32} className="animate-spin text-emerald-500 mb-2" />
+                        <Loader2 size={32} className="animate-spin text-gold mb-2" />
                         <p className={`text-sm ${theme.textMuted}`}>Cargando...</p>
                       </div>
                     )}
@@ -1139,11 +1144,11 @@ const App = () => {
 
                     {/* Lista de conversaciones */}
                     {!connectionError && filteredChats.map((chat) => (
-                      <div key={chat.id} onClick={() => handleChatSelect(chat)} className={`p-3 rounded-xl cursor-pointer transition-all border group relative ${selectedChat?.id === chat.id && !isMobileView ? `${isDarkMode ? 'bg-slate-800 border-emerald-500/40' : 'bg-emerald-50 border-emerald-200'} shadow-md` : `${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'} border-transparent`}`}>
+                      <div key={chat.id} onClick={() => handleChatSelect(chat)} className={`p-3 rounded-xl cursor-pointer transition-all border group relative ${selectedChat?.id === chat.id && !isMobileView ? `${isDarkMode ? 'bg-slate-800 border-gold/40' : 'bg-gold-light/20 border-gold-light'} shadow-md` : `${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'} border-transparent`}`}>
                         <div className="flex gap-3">
                           <div className="relative">
                             <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm border shadow-sm ${isDarkMode ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-gray-100 text-gray-600'}`}>{chat.avatar}</div>
-                            <div className={`absolute -top-1 -right-1 p-1 rounded-full border ${isDarkMode ? 'border-slate-900' : 'border-white'} shadow-sm ${chat.type === 'Oportunidad' ? 'bg-emerald-500 text-white' : chat.type === 'Consulta' ? 'bg-blue-500 text-white' : 'bg-gray-400 text-white'}`}>
+                            <div className={`absolute -top-1 -right-1 p-1 rounded-full border ${isDarkMode ? 'border-slate-900' : 'border-white'} shadow-sm ${chat.type === 'Oportunidad' ? 'bg-gold text-white' : chat.type === 'Consulta' ? 'bg-blue-500 text-white' : 'bg-gray-400 text-white'}`}>
                               {chat.type === 'Oportunidad' ? <Star size={10} fill="currentColor" /> : chat.type === 'Consulta' ? <ShoppingBag size={10} /> : <Trash2 size={10} />}
                             </div>
                           </div>
@@ -1178,11 +1183,11 @@ const App = () => {
                           {isCompactView && (
                             <button
                               onClick={() => setShowMobileInfo(true)}
-                              className={`p-2 rounded-lg relative ${conversationAnalyses.length > 0 ? 'text-emerald-500 bg-emerald-500/20' : 'text-emerald-500'} hover:bg-emerald-500/10`}
+                              className={`p-2 rounded-lg relative ${conversationAnalyses.length > 0 ? 'text-gold bg-gold/20' : 'text-gold'} hover:bg-gold/10`}
                             >
                               <ShieldCheck size={20} />
                               {conversationAnalyses.length > 0 && (
-                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-gold text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                                   {conversationAnalyses.length}
                                 </span>
                               )}
@@ -1202,7 +1207,7 @@ const App = () => {
                           {selectedChat.conversationId && showClosedConversations && (
                             <button
                               onClick={handleReopenConversation}
-                              className={`p-2 rounded-lg transition-colors text-emerald-400 hover:bg-emerald-500/10`}
+                              className={`p-2 rounded-lg transition-colors text-gold-light hover:bg-gold/10`}
                               title="Reabrir conversación"
                             >
                               <Archive size={18} />
@@ -1224,7 +1229,7 @@ const App = () => {
                                     setClientMenuOpen(false);
                                     setClientModalOpen(true);
                                   }}
-                                  className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 hover:bg-emerald-500/10 hover:text-emerald-500 transition-colors ${theme.text}`}
+                                  className={`w-full text-left px-4 py-3 text-sm flex items-center gap-2 hover:bg-gold/10 hover:text-gold transition-colors ${theme.text}`}
                                 >
                                   <User size={16} />
                                   Editar Cliente
@@ -1246,7 +1251,7 @@ const App = () => {
                       <div ref={chatContainerRef} className={`flex-1 ${isDarkMode ? 'bg-slate-950/50' : 'bg-gray-50/50'} p-4 lg:p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4`}>
                         {messagesLoading ? (
                           <div className="flex flex-col items-center justify-center h-full opacity-50">
-                            <Loader2 size={32} className="animate-spin text-emerald-500 mb-2" />
+                            <Loader2 size={32} className="animate-spin text-gold mb-2" />
                             <p className={`text-sm ${theme.textMuted}`}>Cargando mensajes...</p>
                           </div>
                         ) : loadError ? (
@@ -1259,7 +1264,7 @@ const App = () => {
                             <div className="flex gap-3 mt-2">
                               <button
                                 onClick={() => handleChatSelect(selectedChat)}
-                                className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-[600] shadow hover:bg-emerald-500 transition-colors flex items-center gap-2"
+                                className="px-4 py-2 bg-gold-dark text-white rounded-lg text-sm font-[600] shadow hover:bg-gold transition-colors flex items-center gap-2"
                               >
                                 <RefreshCw size={14} /> Reintentar
                               </button>
@@ -1346,8 +1351,8 @@ const App = () => {
                 ${isCompactView ? 'w-full h-full' : 'flex-1'} flex-col 
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} transition-colors duration-300 overflow-hidden
               `}>
-                  {isCompactView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-500">Análisis IA</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
-                  {!isCompactView && <div className={`p-4 border-b ${theme.cardBorder} ${isDarkMode ? 'bg-emerald-900/10' : 'bg-emerald-50'} flex items-center gap-2 flex-shrink-0`}><ShieldCheck size={18} className="text-emerald-500" /><h2 className="font-bold text-sm text-emerald-600 uppercase tracking-wider">{selectedChat?.aiAnalysis?.category === 'inquiry' ? 'Intención' : 'Análisis'}</h2></div>}
+                  {isCompactView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-gold" /><h2 className="font-bold text-sm text-gold">Análisis IA</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
+                  {!isCompactView && <div className={`p-4 border-b ${theme.cardBorder} ${isDarkMode ? 'bg-gold-dark/10' : 'bg-gold-light/20'} flex items-center gap-2 flex-shrink-0`}><ShieldCheck size={18} className="text-gold" /><h2 className="font-bold text-sm text-gold-dark uppercase tracking-wider">{selectedChat?.aiAnalysis?.category === 'inquiry' ? 'Intención' : 'Análisis'}</h2></div>}
 
                   {selectedChat ? (
                     <>
@@ -1356,7 +1361,7 @@ const App = () => {
                         {conversationAnalyses.length > 0 ? (
                           <div className={`rounded-xl p-5 mb-5 relative overflow-hidden border shadow-sm ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-100'}`}>
                             {/* Decorative background */}
-                            <div className={`absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8 rotate-45 opacity-10 ${conversationAnalyses[currentAnalysisIndex]?.business_classification === 'OPORTUNIDAD' ? 'bg-emerald-500' : 'bg-gray-500'}`}></div>
+                            <div className={`absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8 rotate-45 opacity-10 ${conversationAnalyses[currentAnalysisIndex]?.business_classification === 'OPORTUNIDAD' ? 'bg-gold' : 'bg-gray-500'}`}></div>
 
                             {/* Carousel navigation (only if > 1) */}
                             {conversationAnalyses.length > 1 && (
@@ -1430,13 +1435,13 @@ const App = () => {
                                     {analysis.confidence && (
                                       <div>
                                         <p className={`text-[10px] uppercase font-bold ${theme.textMuted}`}>Confianza</p>
-                                        <p className={`text-sm font-bold ${analysis.confidence >= 80 ? 'text-emerald-500' : analysis.confidence >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>{analysis.confidence}%</p>
+                                        <p className={`text-sm font-bold ${analysis.confidence >= 80 ? 'text-gold' : analysis.confidence >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>{analysis.confidence}%</p>
                                       </div>
                                     )}
                                   </div>
 
                                   {/* Classification badge */}
-                                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold ${analysis.business_classification === 'OPORTUNIDAD' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}`}>
+                                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold ${analysis.business_classification === 'OPORTUNIDAD' ? 'bg-gold/20 text-gold-light border border-gold/30' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}`}>
                                     <Star size={12} fill={analysis.business_classification === 'OPORTUNIDAD' ? 'currentColor' : 'none'} />
                                     {analysis.business_classification || 'SIN CLASIFICAR'}
                                   </div>
@@ -1632,7 +1637,7 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages }
             disabled={isSending || !responseBody.trim()}
             className={`py-2 px-4 lg:px-6 rounded-lg font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-2 text-white ${isSending ? 'opacity-50 cursor-not-allowed' : ''} ${category === 'inquiry'
               ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-blue-500/20'
-              : 'bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-emerald-500/20'
+              : 'bg-gradient-to-r from-gold-dark to-gold shadow-gold/20'
               }`}>
             {isSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
             {isSending ? 'Enviando...' : 'Enviar'}

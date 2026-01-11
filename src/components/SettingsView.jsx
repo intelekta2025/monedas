@@ -79,8 +79,8 @@ const SettingsView = ({ onBack, isDarkMode }) => {
             title: 'Teléfonos WhatsApp',
             description: 'Gestiona los números conectados a WhatsApp Business',
             count: whatsappPhones.length,
-            color: 'text-green-500',
-            bgColor: isDarkMode ? 'bg-green-500/10' : 'bg-green-50',
+            color: 'text-gold',
+            bgColor: isDarkMode ? 'bg-gold/10' : 'bg-gold/10',
         },
         {
             id: 'users',
@@ -190,7 +190,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                                 name="name"
                                 value={formData.name}
                                 onChange={handleChange}
-                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50`}
+                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50`}
                                 placeholder="Ej. Ventas Principal"
                                 required
                             />
@@ -204,7 +204,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                                 name="phone_number"
                                 value={formData.phone_number}
                                 onChange={handleChange}
-                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50`}
+                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50`}
                                 placeholder="+52 55 1234 5678"
                                 required
                             />
@@ -218,7 +218,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                                 name="display_name"
                                 value={formData.display_name}
                                 onChange={handleChange}
-                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50`}
+                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50`}
                                 placeholder="Nombre que verán los clientes"
                             />
                         </div>
@@ -236,7 +236,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                                     name="twilio_account_sid"
                                     value={formData.twilio_account_sid}
                                     onChange={handleChange}
-                                    className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-lg py-2 px-3 text-sm outline-none focus:border-emerald-500/50`}
+                                    className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-lg py-2 px-3 text-sm outline-none focus:border-gold/50`}
                                     placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                                 />
                             </div>
@@ -248,7 +248,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                                     name="twilio_auth_token"
                                     value={formData.twilio_auth_token}
                                     onChange={handleChange}
-                                    className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-lg py-2 px-3 text-sm outline-none focus:border-emerald-500/50`}
+                                    className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-lg py-2 px-3 text-sm outline-none focus:border-gold/50`}
                                     placeholder="••••••••••••••••"
                                 />
                             </div>
@@ -260,7 +260,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                                     name="twilio_phone_sid"
                                     value={formData.twilio_phone_sid}
                                     onChange={handleChange}
-                                    className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-lg py-2 px-3 text-sm outline-none focus:border-emerald-500/50`}
+                                    className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-lg py-2 px-3 text-sm outline-none focus:border-gold/50`}
                                     placeholder="PNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                                 />
                             </div>
@@ -273,7 +273,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                                 name="status"
                                 value={formData.status}
                                 onChange={handleChange}
-                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-emerald-500/50`}
+                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-gold/50`}
                             >
                                 <option value="pending">Pendiente</option>
                                 <option value="active">Activo</option>
@@ -294,7 +294,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                             <button
                                 type="submit"
                                 disabled={saving}
-                                className="flex-1 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                                className="flex-1 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-gold-dark to-gold text-white shadow-lg shadow-gold/20 hover:from-gold hover:to-gold-light transition-all flex items-center justify-center gap-2 disabled:opacity-70"
                             >
                                 {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                                 {saving ? 'Guardando...' : 'Guardar'}
@@ -353,7 +353,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                 </button>
                 <button
                     onClick={handleAddPhone}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 transition-all"
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gold to-gold-dark text-white text-sm font-bold rounded-xl shadow-lg shadow-gold/20 hover:from-gold-light hover:to-gold transition-all"
                 >
                     <Plus size={16} />
                     Agregar Teléfono
@@ -361,7 +361,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
             </div>
 
             <h2 className={`text-lg font-bold ${theme.text} flex items-center gap-2`}>
-                <Phone size={20} className="text-green-500" />
+                <Phone size={20} className="text-gold" />
                 Teléfonos WhatsApp
             </h2>
 
@@ -374,7 +374,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
 
             {loading ? (
                 <div className="flex items-center justify-center py-12">
-                    <Loader2 size={32} className="animate-spin text-emerald-500" />
+                    <Loader2 size={32} className="animate-spin text-gold" />
                 </div>
             ) : whatsappPhones.length === 0 ? (
                 <div className={`text-center py-12 ${theme.textMuted}`}>
@@ -382,7 +382,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                     <p className="text-sm">No hay teléfonos configurados</p>
                     <button
                         onClick={handleAddPhone}
-                        className="mt-4 text-emerald-500 hover:text-emerald-400 text-sm font-medium"
+                        className="mt-4 text-gold hover:text-gold-light text-sm font-medium"
                     >
                         + Agregar el primero
                     </button>
@@ -392,11 +392,11 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                     {whatsappPhones.map((phone) => (
                         <div
                             key={phone.id}
-                            className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl p-4 flex items-center justify-between group hover:border-emerald-500/30 transition-all`}
+                            className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl p-4 flex items-center justify-between group hover:border-gold/30 transition-all`}
                         >
                             <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-green-500/10' : 'bg-green-50'}`}>
-                                    <MessageCircle size={20} className="text-green-500" />
+                                <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-gold/10' : 'bg-gold/10'}`}>
+                                    <MessageCircle size={20} className="text-gold" />
                                 </div>
                                 <div>
                                     <p className={`font-bold ${theme.text}`}>{phone.name}</p>
@@ -405,10 +405,10 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${phone.status === 'active'
-                                        ? 'text-green-500 bg-green-500/10'
-                                        : phone.status === 'pending'
-                                            ? 'text-yellow-500 bg-yellow-500/10'
-                                            : 'text-gray-500 bg-gray-500/10'
+                                    ? 'text-gold bg-gold/10'
+                                    : phone.status === 'pending'
+                                        ? 'text-yellow-500 bg-yellow-500/10'
+                                        : 'text-gray-500 bg-gray-500/10'
                                     }`}>
                                     <CheckCircle size={12} />
                                     {phone.status === 'active' ? 'Activo' : phone.status === 'pending' ? 'Pendiente' : phone.status}
@@ -446,7 +446,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                     <ArrowLeft size={18} />
                     <span className="text-sm font-medium">Volver</span>
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 transition-all">
+                <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gold-dark to-gold text-white text-sm font-bold rounded-xl shadow-lg shadow-gold/20 hover:from-gold hover:to-gold-light transition-all">
                     <Plus size={16} />
                     Agregar Usuario
                 </button>
@@ -461,7 +461,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                 {users.map((user) => (
                     <div
                         key={user.id}
-                        className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl p-4 flex items-center justify-between group hover:border-emerald-500/30 transition-all`}
+                        className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl p-4 flex items-center justify-between group hover:border-gold/30 transition-all`}
                     >
                         <div className="flex items-center gap-4">
                             <div className={`w-12 h-12 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-gray-100'} flex items-center justify-center font-bold ${theme.text}`}>
@@ -474,8 +474,8 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                         </div>
                         <div className="flex items-center gap-3">
                             <span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${user.role === 'Admin'
-                                    ? 'text-purple-500 bg-purple-500/10'
-                                    : 'text-blue-500 bg-blue-500/10'
+                                ? 'text-purple-500 bg-purple-500/10'
+                                : 'text-blue-500 bg-blue-500/10'
                                 }`}>
                                 <Shield size={12} />
                                 {user.role}
@@ -502,7 +502,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                 <button
                     key={item.id}
                     onClick={() => setActiveSection(item.id)}
-                    className={`w-full ${theme.cardBg} border ${theme.cardBorder} rounded-xl p-4 flex items-center justify-between group hover:border-emerald-500/30 transition-all text-left`}
+                    className={`w-full ${theme.cardBg} border ${theme.cardBorder} rounded-xl p-4 flex items-center justify-between group hover:border-gold/30 transition-all text-left`}
                 >
                     <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-xl ${item.bgColor}`}>
@@ -517,7 +517,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                         <span className={`text-xs font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-gray-100 text-gray-500'}`}>
                             {item.count}
                         </span>
-                        <ChevronRight size={18} className={`${theme.textMuted} group-hover:text-emerald-500 transition-colors`} />
+                        <ChevronRight size={18} className={`${theme.textMuted} group-hover:text-gold transition-colors`} />
                     </div>
                 </button>
             ))}
@@ -535,7 +535,7 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                     <ArrowLeft size={20} />
                 </button>
                 <div className="flex items-center gap-3">
-                    <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
+                    <div className="bg-gradient-to-br from-gold-light to-gold-dark p-2 rounded-xl shadow-lg shadow-gold/20">
                         <Settings size={20} className="text-white" />
                     </div>
                     <div>
