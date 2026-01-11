@@ -29,37 +29,27 @@ export const AuthProvider = ({ children }) => {
 
     // Inicializar sesión
     useEffect(() => {
-        // 1. Verificar sesión inicial sin timeouts artificiales
+        // 1. Verificar sesión SIN timeout
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
                 setUser(session.user);
                 loadProfile(session.user.id);
-                // Iniciar heartbeat de sesión
-                startSessionHeartbeat();
+                startSessionHeartbeat(); // Tu heartbeat es buena idea, mantenlo.
             }
-            setLoading(false);
+            setLoading(false); // La app carga, tenga o no usuario.
         }).catch(err => {
-            console.error("Error checking session", err);
+            console.error("Error crítico de sesión", err);
             setLoading(false);
         });
 
-        // 2. Escuchar cambios legítimos
+        // 2. Escuchar cambios
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log(`Auth event: ${event}`);
-
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
                 setUser(session.user);
-                if (event === 'SIGNED_IN') {
-                    await loadProfile(session.user.id);
-                    // Iniciar heartbeat de sesión
-                    startSessionHeartbeat();
-                }
             } else if (event === 'SIGNED_OUT') {
+                // Solo aquí limpiamos el estado
                 setUser(null);
                 setProfile(null);
-                // Detener heartbeat
-                stopSessionHeartbeat();
-                // No recargues la página agresivamente, deja que React renderice el Login
             }
         });
 

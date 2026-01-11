@@ -291,56 +291,13 @@ const App = () => {
         setConversationsLoading(true);
       }
       try {
-        const fetchWithRetry = async (retries = 1) => {
-          // Intento 1: Timeout corto (4s)
-          const controller1 = new AbortController();
-          try {
-            // Si el efecto global ya canceló, no iniciar
-            if (effectController.signal.aborted) throw new Error('EffectCancelled');
+        // Simple y directo. Sin timeouts manuales.
+        // Verificar si el efecto fue cancelado antes de iniciar
+        if (effectController.signal.aborted) return;
 
-            const shortPromise = new Promise((_, reject) =>
-              setTimeout(() => {
-                controller1.abort();
-                reject(new Error('ShortTimeout'));
-              }, 4000)
-            );
-
-            const fetcher = showClosedConversations
-              ? getClosedConversations(selectedPhone.id, 50, { signal: controller1.signal })
-              : getConversations(selectedPhone.id, { signal: controller1.signal });
-
-            return await Promise.race([fetcher, shortPromise]);
-          } catch (err) {
-            // CRITICAL: Si el efecto fue cancelado (usuario cambió de tab), NO reintentar
-            if (effectController.signal.aborted) {
-              console.log('🛑 [CONV] Efecto cancelado, abortando reintentos.');
-              throw new Error('EffectCancelled'); // Romper flujo
-            }
-
-            if (retries > 0 && (err.message === 'ShortTimeout' || err.name === 'AbortError')) {
-              console.log('⚠️ [CONV] Primer intento lento, reintentando...');
-              const controller2 = new AbortController();
-              try {
-                const longPromise = new Promise((_, reject) =>
-                  setTimeout(() => {
-                    controller2.abort();
-                    reject(new Error('TimeoutConversations'));
-                  }, 10000)
-                );
-                const fetcher2 = showClosedConversations
-                  ? getClosedConversations(selectedPhone.id, 50, { signal: controller2.signal })
-                  : getConversations(selectedPhone.id, { signal: controller2.signal });
-                return await Promise.race([fetcher2, longPromise]);
-              } catch (e2) {
-                controller2.abort();
-                throw e2;
-              }
-            }
-            throw err;
-          }
-        };
-
-        const convs = await fetchWithRetry();
+        const convs = showClosedConversations
+          ? await getClosedConversations(selectedPhone.id, 50)
+          : await getConversations(selectedPhone.id);
 
         // Verificar cancelación antes de actualizar estado
         if (effectController.signal.aborted) return;
@@ -614,8 +571,7 @@ const App = () => {
       // Guardar referencia del chat actual
       currentChatIdRef.current = chat.conversationId;
 
-      // CACHE-FIRST POINTER:
-      // Si tenemos mensajes en caché, mostrarlos de inmediato mientras actualizamos
+      // OPTIMISTIC UI: Mostrar caché inmediatamente
       const cachedMessages = messagesCache.current.get(chat.conversationId);
       if (cachedMessages) {
         console.log('📦 [CACHE] Usando mensajes en memoria para:', chat.conversationId);
@@ -630,53 +586,8 @@ const App = () => {
 
       console.log('handleChatSelect: Cargando mensajes para conversación (Red):', chat.conversationId);
       try {
-        // SMART RETRY LOGIC CON ABORT CONTROLLER:
-        // Si el navegador deja colgada la petición, debemos cancelarla explícitamente.
-
-        const fetchWithRetry = async (retries = 1) => {
-          // Intento 1: Timeout corto (4s) con abort
-          const controller1 = new AbortController();
-          try {
-            // Crear promesa de timeout que aborta la petición
-            const shortTimeout = new Promise((_, reject) =>
-              setTimeout(() => {
-                controller1.abort();
-                reject(new Error('ShortTimeout'));
-              }, 4000)
-            );
-
-            return await Promise.race([
-              getMessages(chat.conversationId, 50, { signal: controller1.signal }),
-              shortTimeout
-            ]);
-          } catch (err) {
-            if (retries > 0 && (err.message === 'ShortTimeout' || err.name === 'AbortError')) {
-              console.log('⚠️ [RETRY] Primer intento lento/abortado, reintentando...');
-
-              // Intento 2: Timeout más generoso (10s)
-              const controller2 = new AbortController();
-              try {
-                const longTimeout = new Promise((_, reject) =>
-                  setTimeout(() => {
-                    controller2.abort();
-                    reject(new Error('Tiempo de espera agotado'));
-                  }, 10000)
-                );
-
-                return await Promise.race([
-                  getMessages(chat.conversationId, 50, { signal: controller2.signal }),
-                  longTimeout
-                ]);
-              } catch (e2) {
-                controller2.abort();
-                throw e2;
-              }
-            }
-            throw err;
-          }
-        };
-
-        const msgs = await fetchWithRetry();
+        // Simple y directo. Sin timeouts manuales.
+        const msgs = await getMessages(chat.conversationId, 50);
 
         // Verificar si seguimos en el mismo chat antes de actualizar
         if (currentChatIdRef.current === chat.conversationId) {
@@ -717,20 +628,16 @@ const App = () => {
       } catch (err) {
         // Si cambió el chat, no mostrar error de la carga anterior
         if (currentChatIdRef.current === chat.conversationId) {
-          console.error('Error cargando mensajes:', err);
+          console.error('Error de red natural:', err);
 
-          // Mostrar error sin intentar refresh automático (evita interrumpir la conexión)
+          // NO hacer logout. Solo mostrar aviso discreto.
           let friendlyError = 'Error cargando mensajes';
-          if (err.message === 'Tiempo de espera agotado') {
-            friendlyError = 'La conexión está tardando más de lo esperado. Intenta de nuevo.';
-          } else if (err.message.includes('fetch') || err.message.includes('network')) {
-            friendlyError = 'Error de conexión. Verifica tu internet.';
-          } else if (err.message.includes('session') || err.message.includes('auth')) {
-            friendlyError = 'Sesión expirada. Recarga la página.';
+          if (err.message?.includes('fetch') || err.message?.includes('network')) {
+            friendlyError = 'Esperando red...';
           }
 
           setLoadError(friendlyError);
-          setChatMessages([]);
+          // NO limpiamos mensajes cacheados
         }
       } finally {
         // Solo quitar loading si seguimos en el mismo chat
