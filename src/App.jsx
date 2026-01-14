@@ -795,25 +795,35 @@ const App = () => {
 
           // RÓTULO: Sincronizar clasificación de conversación con IA
           const hasOpportunity = analyses.some(a => a.business_classification === 'OPORTUNIDAD');
+          const hasTrash = analyses.some(a => a.business_classification === 'BASURA');
           const currentConv = conversations.find(c => c.id === chat.conversationId);
 
-          if (hasOpportunity && currentConv && currentConv.classification !== 'opportunity') {
-            console.log('RT [SYNC]: Detectada OPORTUNIDAD en mensajes. Sincronizando conversación...');
+          if (currentConv) {
+            let newClassification = null;
+            if (hasOpportunity && currentConv.classification !== 'opportunity') {
+              newClassification = 'opportunity';
+            } else if (hasTrash && currentConv.classification !== 'trash') {
+              newClassification = 'trash';
+            }
 
-            // 1. Actualización optimista del estado local
-            setConversations(prev => prev.map(c =>
-              c.id === chat.conversationId ? { ...c, classification: 'opportunity' } : c
-            ));
+            if (newClassification) {
+              console.log(`RT [SYNC]: Detectada ${newClassification.toUpperCase()} en mensajes. Sincronizando...`);
 
-            // 2. Actualización en base de datos
-            supabase
-              .from('whatsapp_conversations')
-              .update({ classification: 'opportunity' })
-              .eq('id', chat.conversationId)
-              .then(({ error }) => {
-                if (error) console.error('RT [SYNC]: Error persistiendo clasificación:', error);
-                else console.log('RT [SYNC]: Clasificación persistida con éxito');
-              });
+              // 1. Actualización optimista del estado local
+              setConversations(prev => prev.map(c =>
+                c.id === chat.conversationId ? { ...c, classification: newClassification } : c
+              ));
+
+              // 2. Actualización en base de datos
+              supabase
+                .from('whatsapp_conversations')
+                .update({ classification: newClassification })
+                .eq('id', chat.conversationId)
+                .then(({ error }) => {
+                  if (error) console.error(`RT [SYNC]: Error persistiendo clasificación ${newClassification}:`, error);
+                  else console.log(`RT [SYNC]: Clasificación ${newClassification} persistida con éxito`);
+                });
+            }
           }
         } else {
           console.log('handleChatSelect: Ignorando resultados de chat antiguo');
