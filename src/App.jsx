@@ -418,13 +418,17 @@ const App = () => {
           // El payload de realtime NO trae las relaciones (client), así que hay que obtenerlas
           try {
             const { data: fullConv, error } = await supabase
-              .from('conversations')
+              .from('whatsapp_conversations')
               .select('*, client:clients(*)')
               .eq('id', payload.new.id)
               .single();
 
             if (fullConv && !error) {
-              setConversations(prev => [fullConv, ...prev]);
+              setConversations(prev => {
+                // Evitar duplicados si ya se cargó por polling o evento previo
+                if (prev.find(c => c.id === fullConv.id)) return prev;
+                return [fullConv, ...prev];
+              });
             } else {
               // Fallback si falla el fetch (mejor que nada)
               setConversations(prev => [payload.new, ...prev]);
@@ -434,20 +438,43 @@ const App = () => {
             setConversations(prev => [payload.new, ...prev]);
           }
         } else if (payload.eventType === 'UPDATE') {
-          // Para updates, idealmente también deberíamos hacer fetch si cambiaron datos relacionales,
-          // pero si solo cambió last_message, el payload suele ser suficiente si ya teníamos el cliente.
-          // Sin embargo, si la conversación estaba "Sin nombre" en memoria, el update no lo arreglará.
-          // Por seguridad, si el cliente falta en el estado actual, podríamos hacer fetch.
+          // Para updates, si no tenemos los datos del cliente, intentamos obtenerlos
+          setConversations(prev => {
+            const existing = prev.find(c => c.id === payload.new.id);
 
-          setConversations(prev =>
-            prev.map(c => {
-              if (c.id === payload.new.id) {
-                // Si ya tenemos cliente, lo preservamos mergeando
-                return { ...c, ...payload.new, client: c.client };
+            // Si ya tenemos cliente y el update no trae cambios críticos de relación, solo mergeamos
+            if (existing?.client) {
+              return prev.map(c =>
+                c.id === payload.new.id ? { ...c, ...payload.new, client: c.client } : c
+              );
+            }
+
+            // Si no tenemos cliente o es una conversación nueva detectada via UPDATE,
+            // marcamos para fetch o mergeamos payload.new
+            return prev.map(c =>
+              c.id === payload.new.id ? { ...c, ...payload.new } : c
+            );
+          });
+
+          // Si el cliente falta o es "Sin nombre", hacemos un fetch asíncrono para completar los datos
+          const existingConv = conversations.find(c => c.id === payload.new.id);
+          if (!existingConv?.client || existingConv.client.full_name === null) {
+            try {
+              const { data: fullConv } = await supabase
+                .from('whatsapp_conversations')
+                .select('*, client:clients(*)')
+                .eq('id', payload.new.id)
+                .single();
+
+              if (fullConv?.client) {
+                setConversations(prev => prev.map(c =>
+                  c.id === fullConv.id ? fullConv : c
+                ));
               }
-              return c;
-            })
-          );
+            } catch (err) {
+              console.error('Error completando datos de cliente en UPDATE:', err);
+            }
+          }
         }
       });
     }
