@@ -1611,8 +1611,6 @@ const App = () => {
                               if (!analysis) return null;
                               return (
                                 <div className="relative z-10">
-                                  <p className={`text-[10px] uppercase font-bold mb-2 tracking-widest ${theme.textMuted}`}>Identificación IA</p>
-
                                   {/* Image thumbnail */}
                                   {analysis.media_url && (
                                     <div className={`mb-4 group relative rounded-lg overflow-hidden border ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-100'} shadow-sm w-full h-32`}>
