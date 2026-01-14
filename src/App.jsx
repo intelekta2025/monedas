@@ -203,7 +203,7 @@ const App = () => {
   const { isAuthenticated, loading, profile, signOut } = useAuth();
 
   // CONFIGURACIÓN INICIAL PARA DEMO
-  const [activeTab, setActiveTab] = useState('oportunidades');
+  const [activeTab, setActiveTab] = useState('todos');
   const [dateFilter, setDateFilter] = useState('any');
   const [searchQuery, setSearchQuery] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(() => {
