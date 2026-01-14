@@ -595,7 +595,7 @@ const App = () => {
 
     if (selectedPhone?.id) {
       console.log('--- Suscripción Global Iniciada para:', selectedPhone.name);
-      unsubscribe = subscribeToAllMessagesByPhone(selectedPhone.id, (newMessage) => {
+      unsubscribe = subscribeToAllMessagesByPhone(selectedPhone.id, async (newMessage) => {
         console.log('Mensaje Global recibido:', newMessage);
 
         // 1. Si el mensaje pertenece al chat que estamos viendo, lo añadimos a la vista
