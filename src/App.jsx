@@ -415,6 +415,7 @@ const App = () => {
     if (selectedPhone?.id && !showClosedConversations) {
       unsubscribe = subscribeToConversations(selectedPhone.id, async (payload) => {
         if (payload.eventType === 'INSERT') {
+          console.log('RT [INSERT]: Nueva conversación detectada', payload.new.id);
           // El payload de realtime NO trae las relaciones (client), así que hay que obtenerlas
           try {
             const { data: fullConv, error } = await supabase
@@ -424,23 +425,32 @@ const App = () => {
               .single();
 
             if (fullConv && !error) {
+              console.log('RT [INSERT]: Datos completos obtenidos para:', fullConv.client?.full_name || 'Sin nombre');
               setConversations(prev => {
                 // Evitar duplicados si ya se cargó por polling o evento previo
                 if (prev.find(c => c.id === fullConv.id)) return prev;
                 return [fullConv, ...prev];
               });
             } else {
-              // Fallback si falla el fetch (mejor que nada)
+              console.warn('RT [INSERT]: No se pudo obtener datos completos, usando payload básico');
               setConversations(prev => [payload.new, ...prev]);
             }
           } catch (e) {
-            console.error('Error fetching full conversation on insert:', e);
+            console.error('RT [INSERT]: Error fatal:', e);
             setConversations(prev => [payload.new, ...prev]);
           }
         } else if (payload.eventType === 'UPDATE') {
-          // Para updates, si no tenemos los datos del cliente, intentamos obtenerlos
+          console.log('RT [UPDATE]: Conversación actualizada', payload.new.id, 'Last message:', payload.new.last_message);
+
+          let needsFetch = false;
+
           setConversations(prev => {
             const existing = prev.find(c => c.id === payload.new.id);
+
+            // Si el cliente falta o es "Sin nombre", marcamos para fetch
+            if (!existing?.client || existing.client.full_name === null) {
+              needsFetch = true;
+            }
 
             // Si ya tenemos cliente y el update no trae cambios críticos de relación, solo mergeamos
             if (existing?.client) {
@@ -456,9 +466,9 @@ const App = () => {
             );
           });
 
-          // Si el cliente falta o es "Sin nombre", hacemos un fetch asíncrono para completar los datos
-          const existingConv = conversations.find(c => c.id === payload.new.id);
-          if (!existingConv?.client || existingConv.client.full_name === null) {
+          // Fetch asíncrono si es necesario (fuera del state update para evitar efectos secundarios)
+          if (needsFetch) {
+            console.log('RT [UPDATE]: Intentando recuperar datos del cliente ausentes...');
             try {
               const { data: fullConv } = await supabase
                 .from('whatsapp_conversations')
@@ -467,12 +477,13 @@ const App = () => {
                 .single();
 
               if (fullConv?.client) {
+                console.log('RT [UPDATE]: Datos del cliente recuperados:', fullConv.client.full_name);
                 setConversations(prev => prev.map(c =>
                   c.id === fullConv.id ? fullConv : c
                 ));
               }
             } catch (err) {
-              console.error('Error completando datos de cliente en UPDATE:', err);
+              console.error('RT [UPDATE]: Error recuperando cliente:', err);
             }
           }
         }
