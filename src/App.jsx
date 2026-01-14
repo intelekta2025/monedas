@@ -1676,7 +1676,9 @@ const App = () => {
                                     {analysis.confidence && (
                                       <div className="flex-1 flex flex-col items-center border-r border-gray-500/20 px-4">
                                         <p className={`text-[10px] uppercase font-bold mb-1 opacity-60 ${theme.textMuted}`}>Confianza</p>
-                                        <p className={`text-sm lg:text-base font-bold ${analysis.confidence >= 80 ? 'text-gold' : analysis.confidence >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>{analysis.confidence}%</p>
+                                        <p className={`text-sm lg:text-base font-bold ${analysis.confidence >= 80 || (analysis.confidence < 1 && analysis.confidence >= 0.8) ? 'text-gold' : (analysis.confidence >= 50 || (analysis.confidence < 1 && analysis.confidence >= 0.5)) ? 'text-yellow-500' : 'text-red-500'}`}>
+                                          {analysis.confidence <= 1 ? Math.round(analysis.confidence * 100) : Math.round(analysis.confidence)}%
+                                        </p>
                                       </div>
                                     )}
 
@@ -1766,13 +1768,19 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages, 
   // Estado para el mensaje
   const [responseBody, setResponseBody] = useState(suggestedReply);
   const [isSending, setIsSending] = useState(false);
+  const lastAutoPopulated = useRef(suggestedReply);
 
-  // Actualizar default si cambia la sugerencia y no hemos escrito nada
+  // Actualizar default si cambia la sugerencia y el usuario no ha editado el texto
   useEffect(() => {
-    if (suggestedReply && !responseBody) {
-      setResponseBody(suggestedReply);
+    if (suggestedReply !== lastAutoPopulated.current) {
+      // Si el cuerpo actual coincide con lo que autopoblamos la última vez (o está vacío),
+      // significa que el usuario no ha empezado a escribir su propia respuesta
+      if (responseBody === lastAutoPopulated.current || !responseBody.trim()) {
+        setResponseBody(suggestedReply);
+        lastAutoPopulated.current = suggestedReply;
+      }
     }
-  }, [suggestedReply]);
+  }, [suggestedReply, responseBody]);
 
   const handleSend = async () => {
     if (!responseBody.trim()) return;
