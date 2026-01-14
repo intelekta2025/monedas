@@ -298,3 +298,23 @@ export const subscribeToAllMessagesByPhone = (phoneId, callback) => {
     };
 };
 
+export const subscribeToAllMediaUpdates = (callback) => {
+    const channel = supabase
+        .channel('global-media-updates')
+        .on(
+            'postgres_changes',
+            {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'whatsapp_message_media',
+            },
+            (payload) => {
+                callback(payload.new);
+            }
+        )
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
+};

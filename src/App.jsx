@@ -3,7 +3,7 @@ import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
 import DashboardHome from './components/DashboardHome';
 import { getWhatsappPhones } from './services/whatsappService';
-import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToAllMessagesByPhone, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
+import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToAllMessagesByPhone, subscribeToAllMediaUpdates, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
 import { supabase } from './services/supabase';
 import ClientEditModal from './components/ClientEditModal';
 
@@ -769,6 +769,32 @@ const App = () => {
       }
     };
   }, [selectedPhone?.id]); // Solo reacciona si cambias el aparato físico
+
+  // --- Monitor Global de Imágenes (IA Analysis) ---
+  useEffect(() => {
+    const unsubscribeMedia = subscribeToAllMediaUpdates(async (media) => {
+      console.log('RT [MEDIA-IA]: Nueva actualización de análisis detectada');
+      if (media.ai_analysis && media.message_id) {
+        try {
+          // Obtener la conversación asociada al mensaje de la imagen
+          const { data: msg } = await supabase
+            .from('whatsapp_messages')
+            .select('conversation_id')
+            .eq('id', media.message_id)
+            .single();
+
+          if (msg?.conversation_id) {
+            console.log('RT [MEDIA-IA]: Sincronizando clasificación para conversación:', msg.conversation_id);
+            syncClassification(msg.conversation_id);
+          }
+        } catch (err) {
+          console.error('RT [MEDIA-IA]: Error procesando actualización:', err);
+        }
+      }
+    });
+
+    return () => unsubscribeMedia();
+  }, []); // Es un listener global para la tabla de media
 
   useEffect(() => {
     if (chatContainerRef.current && selectedChat) {
