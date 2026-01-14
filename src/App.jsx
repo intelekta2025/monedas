@@ -1578,7 +1578,7 @@ const App = () => {
                       <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-0">
                         {/* Si hay análisis de IA en la conversación */}
                         {conversationAnalyses.length > 0 ? (
-                          <div className={`rounded-xl p-5 mb-5 relative overflow-hidden border shadow-sm ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-100'}`}>
+                          <div className={`rounded-xl p-5 mb-2 relative overflow-hidden border shadow-sm ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-100'}`}>
                             {/* Decorative background */}
                             <div className={`absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8 rotate-45 opacity-10 ${conversationAnalyses[currentAnalysisIndex]?.business_classification === 'OPORTUNIDAD' ? 'bg-gold' : 'bg-gray-500'}`}></div>
 
@@ -1665,19 +1665,25 @@ const App = () => {
                                     )}
                                   </div>
 
-                                  {/* Reasoning - Increased font size */}
-                                  {analysis.reasoning && (
-                                    <div className={`mt-5 pt-5 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'}`}>
-                                      <p className={`text-xs uppercase font-bold mb-2.5 tracking-wider ${theme.textMuted}`}>Razonamiento del experto</p>
-                                      <p className={`text-sm lg:text-base leading-relaxed ${theme.text} font-medium`}>{analysis.reasoning}</p>
-                                    </div>
-                                  )}
+                                  {/* Reasoning and Feedback - Integrated to save space */}
+                                  <div className={`mt-5 pt-5 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex flex-wrap items-start justify-between gap-4`}>
+                                    {analysis.reasoning ? (
+                                      <div className="flex-1 min-w-[200px]">
+                                        <p className={`text-sm lg:text-base leading-relaxed ${theme.text} font-medium`}>
+                                          <span className="font-bold mr-1.5 text-gold-dark">Juno comenta:</span>
+                                          {analysis.reasoning}
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <div className="flex-1" />
+                                    )}
 
-                                  {/* Feedback buttons */}
-                                  <div className={`pt-4 mt-4 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex items-center justify-end gap-1`}>
-                                    <p className={`text-[9px] uppercase font-bold mr-2 ${theme.textMuted}`}>¿Correcto?</p>
-                                    <button onClick={() => handleFeedback('positive')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'positive' ? 'text-green-500 bg-green-500/10 scale-110' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button>
-                                    <button onClick={() => handleFeedback('negative')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'negative' ? 'text-red-500 bg-red-500/10 scale-110' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button>
+                                    {/* Feedback buttons - Inline with JUNO to save space */}
+                                    <div className="flex items-center gap-1 flex-shrink-0 pt-0.5">
+                                      <p className={`text-[9px] uppercase font-bold mr-2 ${theme.textMuted}`}>¿Correcto?</p>
+                                      <button onClick={() => handleFeedback('positive')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'positive' ? 'text-green-500 bg-green-500/10 scale-110' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button>
+                                      <button onClick={() => handleFeedback('negative')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'negative' ? 'text-red-500 bg-red-500/10 scale-110' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button>
+                                    </div>
                                   </div>
                                 </div>
                               );
@@ -1830,8 +1836,8 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages }
   };
 
   return (
-    <div className={`flex-shrink-0 p-3 lg:p-5 pt-2 border-t z-20 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-gray-100 bg-white'}`}>
-      <div className="flex items-center justify-between mb-2 lg:mb-3">
+    <div className={`flex-shrink-0 p-3 lg:p-4 pt-1 border-t z-20 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-gray-100 bg-white'}`}>
+      <div className="flex items-center justify-between mb-1.5 lg:mb-2">
         <p className={`text-[10px] uppercase font-bold flex items-center gap-2 ${theme.textMuted}`}>
           <MessageCircle size={12} /> Borrador de Respuesta
         </p>
@@ -1844,7 +1850,7 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages }
 
       <div className={`rounded-xl border shadow-inner overflow-hidden flex flex-col ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-200'}`}>
         <textarea
-          className={`w-full p-3 lg:p-4 bg-transparent border-none outline-none text-sm resize-none font-medium leading-relaxed overflow-y-auto custom-scrollbar h-20 lg:h-40 ${theme.text}`}
+          className={`w-full p-3 lg:p-4 bg-transparent border-none outline-none text-sm resize-none font-medium leading-relaxed overflow-y-auto custom-scrollbar h-40 lg:h-64 ${theme.text}`}
           value={responseBody}
           onChange={(e) => setResponseBody(e.target.value)}
           placeholder="Escribe tu respuesta aquí..."
