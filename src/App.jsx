@@ -281,43 +281,40 @@ const App = () => {
   const syncClassification = async (conversationId) => {
     if (!conversationId) return;
     try {
-      // 1. Obtener mensajes con media del chat
-      const { data: messages } = await supabase
-        .from('whatsapp_messages')
-        .select('id, media:whatsapp_message_media(ai_analysis)')
-        .eq('conversation_id', conversationId)
-        .not('whatsapp_message_media', 'is', null);
+      // 1. Obtener media con análisis directamente (más eficiente)
+      const { data: media, error } = await supabase
+        .from('whatsapp_message_media')
+        .select('ai_analysis, whatsapp_messages!inner(conversation_id)')
+        .eq('whatsapp_messages.conversation_id', conversationId)
+        .not('ai_analysis', 'is', null);
 
-      if (!messages || messages.length === 0) {
-        console.log('RT [AUTO-SYNC]: No hay mensajes con media para:', conversationId);
+      if (error) throw error;
+
+      if (!media || media.length === 0) {
+        console.log('RT [AUTO-SYNC]: No se encontró media con análisis para:', conversationId);
         return;
       }
 
       // 2. Buscar clasificaciones de IA
       let aiClass = null;
-      for (const m of messages) {
-        if (!m.media) continue;
-        const mediaList = Array.isArray(m.media) ? m.media : [m.media];
-        for (const mediaItem of mediaList) {
-          if (!mediaItem.ai_analysis) continue;
-          try {
-            const parsed = typeof mediaItem.ai_analysis === 'string'
-              ? JSON.parse(mediaItem.ai_analysis)
-              : mediaItem.ai_analysis;
+      for (const item of media) {
+        if (!item.ai_analysis) continue;
+        try {
+          const parsed = typeof item.ai_analysis === 'string'
+            ? JSON.parse(item.ai_analysis)
+            : item.ai_analysis;
 
-            if (parsed.business_classification === 'OPORTUNIDAD') {
-              aiClass = 'opportunity';
-              break;
-            } else if (parsed.business_classification === 'BASURA' && !aiClass) {
-              aiClass = 'trash';
-            }
-          } catch (e) { }
-        }
-        if (aiClass === 'opportunity') break;
+          if (parsed.business_classification === 'OPORTUNIDAD') {
+            aiClass = 'opportunity';
+            break;
+          } else if ((parsed.business_classification === 'BASURA' || parsed.business_classification === 'NO_ES_MONEDA') && !aiClass) {
+            aiClass = 'trash';
+          }
+        } catch (e) { }
       }
 
       if (!aiClass) {
-        console.log('RT [AUTO-SYNC]: No se detectó OPORTUNIDAD ni BASURA en:', conversationId);
+        console.log('RT [AUTO-SYNC]: Análisis presente pero sin etiquetas críticas en:', conversationId);
         return;
       }
 
