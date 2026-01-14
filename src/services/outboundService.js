@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 
 // URL del webhook de n8n para mensajes salientes
 // Configura esta URL con tu webhook real de n8n
-const N8N_OUTBOUND_WEBHOOK = import.meta.env.VITE_N8N_OUTBOUND_WEBHOOK || '';
+const N8N_OUTBOUND_WEBHOOK = import.meta.env.VITE_N8N_OUTBOUND_WEBHOOK || 'https://n8n-t.intelekta.ai/webhook/webhook-outbound';
 
 /**
  * Envía un mensaje a través de WhatsApp via n8n/Twilio

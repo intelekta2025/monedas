@@ -1726,8 +1726,8 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages }
 
     setIsSending(true);
     try {
-      // URL del Webhook de n8n
-      let WEBHOOK_URL = import.meta.env.VITE_N8N_OUTBOUND_WEBHOOK || '';
+      // URL del Webhook de n8n con fallback de producción
+      let WEBHOOK_URL = import.meta.env.VITE_N8N_OUTBOUND_WEBHOOK || 'https://n8n-t.intelekta.ai/webhook/webhook-outbound';
 
       // En desarrollo, usar el proxy para evitar CORS si es la URL de production
       if (import.meta.env.DEV && WEBHOOK_URL.includes('https://n8n-t.intelekta.ai/webhook')) {
