@@ -1530,7 +1530,7 @@ const App = () => {
                                           <div className="relative rounded-lg overflow-hidden shadow-lg border border-white/5 max-w-[240px]">
                                             <img src={msg.media[0].media_url} alt="Evidencia" className="w-full h-auto object-cover max-h-[200px]" />
                                           </div>
-                                          {msg.body && <p className={`text-sm lg:text-base ${isDarkMode ? 'text-white' : 'text-gray-700'} font-medium italic leading-relaxed`}>{msg.body}</p>}
+                                          {msg.body && <p className={`text-sm lg:text-base ${theme.text} font-medium italic leading-relaxed`}>{msg.body}</p>}
                                         </div>
                                       ) : msg.num_media > 0 ? (
                                         <div className="space-y-2">
@@ -1541,7 +1541,7 @@ const App = () => {
                                           {msg.body && <p className={theme.text}>{msg.body}</p>}
                                         </div>
                                       ) : (
-                                        <p className={`text-sm lg:text-base ${isDarkMode || sender === 'bot' ? 'text-white' : 'text-gray-800'} leading-relaxed`}>{msg.body}</p>
+                                        <p className={`text-sm lg:text-base ${theme.text} leading-relaxed`}>{msg.body}</p>
                                       )}
                                       <div className={`flex items-center gap-1 mt-1.5 opacity-40 text-[9px] font-bold uppercase ${sender === 'user' ? 'justify-start' : 'justify-end'}`}>
                                         {msgTime}
