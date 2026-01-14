@@ -277,6 +277,78 @@ const App = () => {
   const todayStr = '24/10';
   const yesterdayStr = '23/10';
 
+  // --- Helper: Sincronizar clasificación con IA (Automático) ---
+  const syncClassification = async (conversationId) => {
+    if (!conversationId) return;
+    try {
+      // 1. Obtener mensajes con media del chat
+      const { data: messages } = await supabase
+        .from('whatsapp_messages')
+        .select('id, media:whatsapp_message_media(ai_analysis)')
+        .eq('conversation_id', conversationId)
+        .not('whatsapp_message_media', 'is', null);
+
+      if (!messages || messages.length === 0) {
+        console.log('RT [AUTO-SYNC]: No hay mensajes con media para:', conversationId);
+        return;
+      }
+
+      // 2. Buscar clasificaciones de IA
+      let aiClass = null;
+      for (const m of messages) {
+        if (!m.media) continue;
+        const mediaList = Array.isArray(m.media) ? m.media : [m.media];
+        for (const mediaItem of mediaList) {
+          if (!mediaItem.ai_analysis) continue;
+          try {
+            const parsed = typeof mediaItem.ai_analysis === 'string'
+              ? JSON.parse(mediaItem.ai_analysis)
+              : mediaItem.ai_analysis;
+
+            if (parsed.business_classification === 'OPORTUNIDAD') {
+              aiClass = 'opportunity';
+              break;
+            } else if (parsed.business_classification === 'BASURA' && !aiClass) {
+              aiClass = 'trash';
+            }
+          } catch (e) { }
+        }
+        if (aiClass === 'opportunity') break;
+      }
+
+      if (!aiClass) {
+        console.log('RT [AUTO-SYNC]: No se detectó OPORTUNIDAD ni BASURA en:', conversationId);
+        return;
+      }
+
+      // 3. Verificar si cambio es necesario y actualizar
+      setConversations(prev => {
+        const conv = prev.find(c => c.id === conversationId);
+        // Unificar comparaciones (algunas vienen null, otras 'inquiry')
+        const currentClass = conv?.classification || 'inquiry';
+
+        if (conv && currentClass !== aiClass) {
+          console.log(`RT [AUTO-SYNC]: RELACIONANDO -> ${aiClass.toUpperCase()} para:`, conversationId);
+
+          // Actualización en DB (en segundo plano)
+          supabase
+            .from('whatsapp_conversations')
+            .update({ classification: aiClass })
+            .eq('id', conversationId)
+            .then(({ error }) => {
+              if (error) console.error('RT [AUTO-SYNC]: Error en DB:', error);
+              else console.log('RT [AUTO-SYNC]: Persistido con éxito en DB');
+            });
+
+          return prev.map(c => c.id === conversationId ? { ...c, classification: aiClass } : c);
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error('RT [AUTO-SYNC]: Error crítico:', err);
+    }
+  };
+
   // Cargar teléfonos WhatsApp al autenticarse
   useEffect(() => {
     const loadPhones = async () => {
@@ -394,82 +466,6 @@ const App = () => {
 
     // POLLING DESACTIVADO - Confiamos en Real-time de Supabase
     // Descomentar si se necesita como respaldo
-    /*
-    const intervalId = setInterval(() => {
-      // Solo hacer polling si:
-      // 1. Hay teléfono seleccionado
-      // 2. No se está ejecutando ya una carga (evita apilamiento)
-      // 3. La ventana está visible (ahorra recursos)
-      // 4. No hay error activo de conexión
-      if (selectedPhone?.id && !isPollingConversationsRef.current && document.visibilityState === 'visible' && !connectionError) {
-        isPollingConversationsRef.current = true;
-        loadConversations(true).catch(() => {
-           isPollingConversationsRef.current = false;
-        });
-      }
-    }, 30000);
-    */
-
-    // --- Helper: Sincronizar clasificación con IA (Automático) ---
-    const syncClassification = async (conversationId) => {
-      try {
-        // 1. Obtener mensajes con media del chat
-        const { data: messages } = await supabase
-          .from('whatsapp_messages')
-          .select('id, media:whatsapp_message_media(ai_analysis)')
-          .eq('conversation_id', conversationId)
-          .not('whatsapp_message_media', 'is', null);
-
-        if (!messages || messages.length === 0) return;
-
-        // 2. Buscar clasificaciones de IA
-        let aiClass = null;
-        for (const m of messages) {
-          if (!m.media) continue;
-          for (const mediaItem of m.media) {
-            if (!mediaItem.ai_analysis) continue;
-            try {
-              const parsed = typeof mediaItem.ai_analysis === 'string'
-                ? JSON.parse(mediaItem.ai_analysis)
-                : mediaItem.ai_analysis;
-
-              if (parsed.business_classification === 'OPORTUNIDAD') {
-                aiClass = 'opportunity';
-                break;
-              } else if (parsed.business_classification === 'BASURA' && !aiClass) {
-                aiClass = 'trash';
-              }
-            } catch (e) { }
-          }
-          if (aiClass === 'opportunity') break;
-        }
-
-        if (!aiClass) return;
-
-        // 3. Verificar si cambio es necesario y actualizar
-        setConversations(prev => {
-          const conv = prev.find(c => c.id === conversationId);
-          if (conv && conv.classification !== aiClass) {
-            console.log(`RT [AUTO-SYNC]: Actualizando a ${aiClass.toUpperCase()} para:`, conversationId);
-
-            // Actualización en DB (en segundo plano)
-            supabase
-              .from('whatsapp_conversations')
-              .update({ classification: aiClass })
-              .eq('id', conversationId)
-              .then(({ error }) => {
-                if (error) console.error('RT [AUTO-SYNC]: Error en DB:', error);
-              });
-
-            return prev.map(c => c.id === conversationId ? { ...c, classification: aiClass } : c);
-          }
-          return prev;
-        });
-      } catch (err) {
-        console.error('RT [AUTO-SYNC]: Error crítico:', err);
-      }
-    };
-
     // Suscribirse a cambios en tiempo real (solo para conversaciones abiertas)
     let unsubscribe;
     if (selectedPhone?.id && !showClosedConversations) {
@@ -889,6 +885,9 @@ const App = () => {
           console.log('handleChatSelect: Análisis extraídos:', analyses);
           setConversationAnalyses(analyses);
           setCurrentAnalysisIndex(0);
+
+          // FALLBACK SYNC: Por si el tiempo real falló o fue muy rápido
+          syncClassification(chat.conversationId);
         } else {
           console.log('handleChatSelect: Ignorando resultados de chat antiguo');
         }
