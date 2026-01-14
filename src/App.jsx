@@ -569,7 +569,7 @@ const App = () => {
             // Si es un mensaje SALIENTE (nuestro), buscar si hay un temporal atrapado
             // (Mensaje optimista que agregamos al enviar)
             if (newMessage.direction === 'outbound') {
-              const tempIndex = prev.findIndex(m => m.id.toString().startsWith('temp-') && m.body === newMessage.body);
+              const tempIndex = prev.findIndex(m => m.id.toString().startsWith('temp-') && m.body?.trim() === newMessage.body?.trim());
 
               if (tempIndex !== -1) {
                 // Reemplazar el temporal con el real
