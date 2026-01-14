@@ -410,6 +410,66 @@ const App = () => {
     }, 30000);
     */
 
+    // --- Helper: Sincronizar clasificación con IA (Automático) ---
+    const syncClassification = async (conversationId) => {
+      try {
+        // 1. Obtener mensajes con media del chat
+        const { data: messages } = await supabase
+          .from('whatsapp_messages')
+          .select('id, media:whatsapp_message_media(ai_analysis)')
+          .eq('conversation_id', conversationId)
+          .not('whatsapp_message_media', 'is', null);
+
+        if (!messages || messages.length === 0) return;
+
+        // 2. Buscar clasificaciones de IA
+        let aiClass = null;
+        for (const m of messages) {
+          if (!m.media) continue;
+          for (const mediaItem of m.media) {
+            if (!mediaItem.ai_analysis) continue;
+            try {
+              const parsed = typeof mediaItem.ai_analysis === 'string'
+                ? JSON.parse(mediaItem.ai_analysis)
+                : mediaItem.ai_analysis;
+
+              if (parsed.business_classification === 'OPORTUNIDAD') {
+                aiClass = 'opportunity';
+                break;
+              } else if (parsed.business_classification === 'BASURA' && !aiClass) {
+                aiClass = 'trash';
+              }
+            } catch (e) { }
+          }
+          if (aiClass === 'opportunity') break;
+        }
+
+        if (!aiClass) return;
+
+        // 3. Verificar si cambio es necesario y actualizar
+        setConversations(prev => {
+          const conv = prev.find(c => c.id === conversationId);
+          if (conv && conv.classification !== aiClass) {
+            console.log(`RT [AUTO-SYNC]: Actualizando a ${aiClass.toUpperCase()} para:`, conversationId);
+
+            // Actualización en DB (en segundo plano)
+            supabase
+              .from('whatsapp_conversations')
+              .update({ classification: aiClass })
+              .eq('id', conversationId)
+              .then(({ error }) => {
+                if (error) console.error('RT [AUTO-SYNC]: Error en DB:', error);
+              });
+
+            return prev.map(c => c.id === conversationId ? { ...c, classification: aiClass } : c);
+          }
+          return prev;
+        });
+      } catch (err) {
+        console.error('RT [AUTO-SYNC]: Error crítico:', err);
+      }
+    };
+
     // Suscribirse a cambios en tiempo real (solo para conversaciones abiertas)
     let unsubscribe;
     if (selectedPhone?.id && !showClosedConversations) {
@@ -431,6 +491,8 @@ const App = () => {
                 if (prev.find(c => c.id === fullConv.id)) return prev;
                 return [fullConv, ...prev];
               });
+              // Una conversación nueva podría tener ya un mensaje analizado si viene de un flujo n8n rápido
+              syncClassification(fullConv.id);
             } else {
               console.warn('RT [INSERT]: No se pudo obtener datos completos, usando payload básico');
               setConversations(prev => [payload.new, ...prev]);
@@ -486,6 +548,9 @@ const App = () => {
               console.error('RT [UPDATE]: Error recuperando cliente:', err);
             }
           }
+
+          // SIEMPRE intentar sincronizar clasificación en un update, por si la IA terminó
+          syncClassification(payload.new.id);
         }
       });
     }
@@ -684,9 +749,15 @@ const App = () => {
                 return [fullConv, ...prev];
               });
             }
+            // Sincronizar clasificación si es un chat nuevo o recuperado
+            syncClassification(convToUpdate);
           } catch (err) {
             console.error('RT [GLOBAL]: Error recuperando datos:', err);
           }
+        } else {
+          // Si no necesita fetch total, igual intentamos sincronizar clasificación 
+          // porque pudo llegar un mensaje que la IA acaba de clasificar
+          syncClassification(newMessage.conversation_id);
         }
       });
     }
@@ -792,39 +863,6 @@ const App = () => {
           console.log('handleChatSelect: Análisis extraídos:', analyses);
           setConversationAnalyses(analyses);
           setCurrentAnalysisIndex(0);
-
-          // RÓTULO: Sincronizar clasificación de conversación con IA
-          const hasOpportunity = analyses.some(a => a.business_classification === 'OPORTUNIDAD');
-          const hasTrash = analyses.some(a => a.business_classification === 'BASURA');
-          const currentConv = conversations.find(c => c.id === chat.conversationId);
-
-          if (currentConv) {
-            let newClassification = null;
-            if (hasOpportunity && currentConv.classification !== 'opportunity') {
-              newClassification = 'opportunity';
-            } else if (hasTrash && currentConv.classification !== 'trash') {
-              newClassification = 'trash';
-            }
-
-            if (newClassification) {
-              console.log(`RT [SYNC]: Detectada ${newClassification.toUpperCase()} en mensajes. Sincronizando...`);
-
-              // 1. Actualización optimista del estado local
-              setConversations(prev => prev.map(c =>
-                c.id === chat.conversationId ? { ...c, classification: newClassification } : c
-              ));
-
-              // 2. Actualización en base de datos
-              supabase
-                .from('whatsapp_conversations')
-                .update({ classification: newClassification })
-                .eq('id', chat.conversationId)
-                .then(({ error }) => {
-                  if (error) console.error(`RT [SYNC]: Error persistiendo clasificación ${newClassification}:`, error);
-                  else console.log(`RT [SYNC]: Clasificación ${newClassification} persistida con éxito`);
-                });
-            }
-          }
         } else {
           console.log('handleChatSelect: Ignorando resultados de chat antiguo');
         }
