@@ -692,19 +692,37 @@ const App = () => {
         // 1. Si el mensaje pertenece al chat que estamos viendo, lo añadimos a la vista
         if (newMessage.conversation_id === selectedChatRef.current?.conversationId) {
           setChatMessages(prev => {
-            // Si ya existe el ID real, ignorar
-            if (prev.find(m => m.id === newMessage.id)) return prev;
+            // 1. Si ya existe el ID real, ignorar
+            if (prev.some(m => m.id === newMessage.id)) return prev;
 
-            // Si es un mensaje SALIENTE (nuestro), buscar si hay un temporal atrapado
-            // (Mensaje optimista que agregamos al enviar)
+            // 2. Si es un mensaje SALIENTE (nuestro), intentar emparejarlo con un temporal
             if (newMessage.direction === 'outbound') {
-              const tempIndex = prev.findIndex(m => m.id.toString().startsWith('temp-') && m.body?.trim() === newMessage.body?.trim());
+              const newMessageBody = newMessage.body?.trim();
+
+              // Buscar un mensaje temporal ("temp-") que tenga el mismo cuerpo
+              const tempIndex = prev.findIndex(m =>
+                m.id?.toString().startsWith('temp-') &&
+                m.body?.trim() === newMessageBody
+              );
 
               if (tempIndex !== -1) {
-                // Reemplazar el temporal con el real
+                console.log('RT [DEDUPE]: Emparejado temporal encontrado en index:', tempIndex);
                 const newMessages = [...prev];
                 newMessages[tempIndex] = newMessage;
                 return newMessages;
+              }
+
+              // Seguridad extra: Si no hay "temp-", pero ya existe un mensaje idéntico 
+              // enviado hace muy poco (ej. 5s), ignorar para evitar duplicados por latencia
+              const existsRecently = prev.some(m =>
+                m.direction === 'outbound' &&
+                m.body?.trim() === newMessageBody &&
+                (new Date() - new Date(m.created_at || Date.now())) < 5000
+              );
+
+              if (existsRecently) {
+                console.log('RT [DEDUPE]: Ignorando duplicado reciente no-temporal');
+                return prev;
               }
             }
 
@@ -1784,7 +1802,7 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages, 
         phone_id: selectedPhone.id,
         to_number: chat.contactNumber,
         from_number: selectedPhone.phone_number,
-        body: responseBody,
+        body: currentBody,
         direction: 'outbound'
       };
 
@@ -1799,24 +1817,14 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages, 
         throw new Error(`Error del webhook: ${response.status}`);
       }
 
-      // NO Guardar en Supabase desde aquí, ya que el n8n se encarga de eso.
-      // Evitamos duplicados.
-
-      // Limpiar y actualizar UI (Optimistic Update)
-      setResponseBody('');
-      setChatMessages(prev => [...prev, {
-        id: 'temp-' + Date.now(),
-        conversation_id: chat.conversationId,
-        body: responseBody,
-        direction: 'outbound',
-        created_at: new Date().toISOString(),
-        status: 'sent'
-      }]);
-
       console.log('Mensaje enviado exitosamente');
 
     } catch (error) {
       console.error('Error enviando mensaje:', error);
+
+      // Revertir cambio optimista si falla
+      setChatMessages(prev => prev.filter(m => m.id !== tempId));
+      setResponseBody(currentBody); // Devolver texto al editor
       alert('Error enviando mensaje: ' + error.message);
     } finally {
       setIsSending(false);
