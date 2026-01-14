@@ -1067,8 +1067,8 @@ const App = () => {
     headerBg: isDarkMode ? 'bg-slate-900' : 'bg-white',
     inputBg: isDarkMode ? 'bg-slate-950' : 'bg-gray-100',
     accent: 'text-gold',
-    chatBubbleUser: isDarkMode ? 'bg-slate-800 border-slate-700 shadow-lg shadow-black/20' : 'bg-white border-gray-200 shadow-sm',
-    chatBubbleBot: isDarkMode ? 'bg-gold-dark/20 border-gold/20 shadow-lg shadow-gold/5' : 'bg-yellow-50 border-yellow-200',
+    chatBubbleUser: isDarkMode ? 'bg-slate-800/80 border-slate-700/50 backdrop-blur-md shadow-lg shadow-black/40' : 'bg-yellow-50 border-yellow-200',
+    chatBubbleBot: isDarkMode ? 'bg-slate-900/40 border-slate-800/50 backdrop-blur-sm' : 'bg-white border-gray-200 shadow-sm',
   };
 
   const handleClientUpdated = (updatedClient) => {
@@ -1443,7 +1443,7 @@ const App = () => {
                           <div className="relative">
                             <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm border shadow-sm ${isDarkMode ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-gray-100 text-gray-600'}`}>{chat.avatar}</div>
                             <div className={`absolute -top-1 -right-1 p-1 rounded-full border ${isDarkMode ? 'border-slate-900' : 'border-white'} shadow-sm ${chat.type === 'Oportunidad' ? 'bg-gold text-white' : chat.type === 'Consulta' ? 'bg-blue-500 text-white' : 'bg-gray-400 text-white'}`}>
-                              {chat.type === 'Oportunidad' ? <Star size={10} fill="currentColor" /> : chat.type === 'Consulta' ? <ShoppingBag size={10} /> : <Trash2 size={10} />}
+                              {chat.type === 'Oportunidad' ? <Star size={10} fill="currentColor" /> : chat.type === 'Consulta' ? <ShoppingBag size={10} /> : <Coins size={10} />}
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
