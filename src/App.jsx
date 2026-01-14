@@ -1578,7 +1578,7 @@ const App = () => {
                                             setImageModalUrl(analysis.media_url);
                                             setImageModalOpen(true);
                                           }}
-                                          className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors border border-white/20"
+                                          className={`p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors border border-white/20`}
                                         >
                                           <Eye size={16} />
                                         </button>
@@ -1586,57 +1586,57 @@ const App = () => {
                                     </div>
                                   )}
 
-                                  {/* Analysis details grid */}
-                                  <div className="grid grid-cols-2 gap-3 mb-4">
+                                  {/* AI Analysis compact row - Improved readability and distribution */}
+                                  <div className={`flex items-stretch justify-between mb-5 rounded-xl p-4 border ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-gray-50 border-gray-200'} shadow-inner`}>
+
+                                    {/* Classification (Distributed) */}
+                                    <div className="flex-1 flex flex-col items-center border-r border-gray-500/20">
+                                      <p className={`text-[10px] uppercase font-bold mb-1 opacity-60 ${theme.textMuted}`}>Categoría</p>
+                                      <div className={`flex items-center gap-1.5 text-xs lg:text-sm font-bold ${analysis.business_classification === 'OPORTUNIDAD' ? 'text-gold' : 'text-gray-400'}`}>
+                                        <Star size={12} fill={analysis.business_classification === 'OPORTUNIDAD' ? 'currentColor' : 'none'} />
+                                        {analysis.business_classification || 'OTRO'}
+                                      </div>
+                                    </div>
+
                                     {analysis.year && (
-                                      <div>
-                                        <p className={`text-[10px] uppercase font-bold ${theme.textMuted}`}>Año</p>
-                                        <p className={`text-lg font-bold ${theme.text}`}>{analysis.year}</p>
+                                      <div className="flex-1 flex flex-col items-center border-r border-gray-500/20">
+                                        <p className={`text-[10px] uppercase font-bold mb-1 opacity-60 ${theme.textMuted}`}>Año</p>
+                                        <p className={`text-sm lg:text-base font-bold ${theme.text}`}>{analysis.year}</p>
                                       </div>
                                     )}
+
                                     {analysis.material_detected && (
-                                      <div>
-                                        <p className={`text-[10px] uppercase font-bold ${theme.textMuted}`}>Material</p>
-                                        <p className={`text-lg font-bold ${theme.text}`}>{analysis.material_detected}</p>
+                                      <div className="flex-1 flex flex-col items-center border-r border-gray-500/20">
+                                        <p className={`text-[10px] uppercase font-bold mb-1 opacity-60 ${theme.textMuted}`}>Material</p>
+                                        <p className={`text-sm lg:text-base font-bold ${theme.text}`}>{analysis.material_detected}</p>
                                       </div>
                                     )}
-                                    {analysis.currency_type && (
-                                      <div>
-                                        <p className={`text-[10px] uppercase font-bold ${theme.textMuted}`}>Moneda</p>
-                                        <p className={`text-sm font-medium ${theme.text}`}>{analysis.currency_type}</p>
-                                      </div>
-                                    )}
+
                                     {analysis.confidence && (
-                                      <div>
-                                        <p className={`text-[10px] uppercase font-bold ${theme.textMuted}`}>Confianza</p>
-                                        <p className={`text-sm font-bold ${analysis.confidence >= 80 ? 'text-gold' : analysis.confidence >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>{analysis.confidence}%</p>
+                                      <div className="flex-1 flex flex-col items-center">
+                                        <p className={`text-[10px] uppercase font-bold mb-1 opacity-60 ${theme.textMuted}`}>Confianza</p>
+                                        <p className={`text-sm lg:text-base font-bold ${analysis.confidence >= 80 ? 'text-gold' : analysis.confidence >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>{analysis.confidence}%</p>
                                       </div>
                                     )}
                                   </div>
 
-                                  {/* Classification badge */}
-                                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold ${analysis.business_classification === 'OPORTUNIDAD' ? 'bg-gold/20 text-gold-light border border-gold/30' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}`}>
-                                    <Star size={12} fill={analysis.business_classification === 'OPORTUNIDAD' ? 'currentColor' : 'none'} />
-                                    {analysis.business_classification || 'SIN CLASIFICAR'}
-                                  </div>
-
-                                  {/* Reasoning */}
+                                  {/* Reasoning - Increased font size */}
                                   {analysis.reasoning && (
-                                    <div className={`mt-4 pt-4 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'}`}>
-                                      <p className={`text-[10px] uppercase font-bold mb-2 ${theme.textMuted}`}>Razonamiento</p>
-                                      <p className={`text-xs leading-relaxed ${theme.textMuted}`}>{analysis.reasoning}</p>
+                                    <div className={`mt-5 pt-5 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'}`}>
+                                      <p className={`text-xs uppercase font-bold mb-2.5 tracking-wider ${theme.textMuted}`}>Razonamiento del experto</p>
+                                      <p className={`text-sm lg:text-base leading-relaxed ${theme.text} font-medium`}>{analysis.reasoning}</p>
                                     </div>
                                   )}
+
+                                  {/* Feedback buttons */}
+                                  <div className={`pt-4 mt-4 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex items-center justify-end gap-1`}>
+                                    <p className={`text-[9px] uppercase font-bold mr-2 ${theme.textMuted}`}>¿Correcto?</p>
+                                    <button onClick={() => handleFeedback('positive')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'positive' ? 'text-green-500 bg-green-500/10 scale-110' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button>
+                                    <button onClick={() => handleFeedback('negative')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'negative' ? 'text-red-500 bg-red-500/10 scale-110' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button>
+                                  </div>
                                 </div>
                               );
                             })()}
-
-                            {/* Feedback buttons */}
-                            <div className={`pt-4 mt-4 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex items-center justify-end gap-1`}>
-                              <p className={`text-[9px] uppercase font-bold mr-2 ${theme.textMuted}`}>¿Correcto?</p>
-                              <button onClick={() => handleFeedback('positive')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'positive' ? 'text-green-500 bg-green-500/10 scale-110' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button>
-                              <button onClick={() => handleFeedback('negative')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'negative' ? 'text-red-500 bg-red-500/10 scale-110' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button>
-                            </div>
                           </div>
                         ) : (
                           /* Si no hay análisis de IA, mostrar placeholder */
