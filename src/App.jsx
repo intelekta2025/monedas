@@ -1380,7 +1380,7 @@ const App = () => {
                         <div className="flex items-center gap-2 lg:gap-3">
                           {isMobileView && <button onClick={handleBackToList} className="p-2 -ml-2 rounded-full hover:bg-slate-800 text-slate-400"><ArrowLeft size={20} /></button>}
                           <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center text-xs lg:text-sm font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>{selectedChat.avatar}</div>
-                          <div><h3 className={`font-bold text-sm ${theme.text}`}>{selectedChat.name}</h3><p className={`text-[10px] ${theme.textMuted} flex items-center gap-1`}><span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Business</p></div>
+                          <div><h3 className={`font-bold text-sm ${theme.text}`}>{selectedChat.name}</h3><p className={`text-[10px] ${theme.textMuted} flex items-center gap-1`}>{selectedChat.contactNumber}</p></div>
                         </div>
                         <div className="flex gap-1">
                           {isCompactView && (
