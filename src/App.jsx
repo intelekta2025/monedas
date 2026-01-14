@@ -200,7 +200,7 @@ const LoginScreen = ({ isDarkMode, toggleTheme }) => {
 // --- COMPONENTE PRINCIPAL APP ---
 const App = () => {
   // ESTADO DE AUTENTICACIÓN (desde Supabase)
-  const { isAuthenticated, loading, profile, signOut } = useAuth();
+  const { isAuthenticated, user, loading, profile, signOut } = useAuth();
 
   // CONFIGURACIÓN INICIAL PARA DEMO
   const [activeTab, setActiveTab] = useState('todos');
@@ -426,6 +426,53 @@ const App = () => {
     loadPhones();
   }, [isAuthenticated]);
 
+  // Función reutilizable para enriquecer conversaciones con la dirección del último mensaje
+  const enrichAndSetConversations = async (convs, isPolling = false) => {
+    if (!convs || convs.length === 0) {
+      setConversations([]);
+      return;
+    }
+
+    try {
+      const convIds = convs.map(c => c.id);
+      const { data: lastMsgs } = await supabase
+        .from('whatsapp_messages')
+        .select('conversation_id, body, direction, created_at')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: false });
+
+      const lastMsgMap = {};
+      if (lastMsgs) {
+        lastMsgs.forEach(m => {
+          if (!lastMsgMap[m.conversation_id]) {
+            lastMsgMap[m.conversation_id] = {
+              body: m.body,
+              direction: m.direction
+            };
+          }
+        });
+      }
+
+      const enriched = convs.map(c => {
+        const lastMsgData = lastMsgMap[c.id];
+        return {
+          ...c,
+          // Priorizamos el mensaje de la tabla de mensajes, pero mantenemos el de la conversación si no hay mensajes
+          last_message: lastMsgData?.body || c.last_message,
+          last_message_sender: lastMsgData?.direction || 'inbound'
+        };
+      });
+
+      if (!isPolling) {
+        console.log('App: [DEBUG] Conversaciones enriquecidas:', enriched.length);
+      }
+      setConversations(enriched);
+    } catch (e) {
+      console.warn('App: Error enriqueciendo:', e);
+      setConversations(convs);
+    }
+  };
+
   // Cargar conversaciones cuando cambia el teléfono seleccionado o el filtro
   useEffect(() => {
     const effectController = new AbortController(); // Controller para cancelar al cambiar deps
@@ -457,7 +504,12 @@ const App = () => {
         if (!isPolling) {
           console.log('App: Conversaciones cargadas:', convs);
         }
-        setConversations(convs || []);
+
+        if (convs && convs.length > 0) {
+          await enrichAndSetConversations(convs, isPolling);
+        } else {
+          setConversations([]);
+        }
         // Solo limpiar selección en carga inicial SIN ERROR
         if (!isPolling && convs && convs.length > 0) {
           setConnectionError(null); // Limpiar error si cargó exitosamente
@@ -540,18 +592,22 @@ const App = () => {
               needsFetch = true;
             }
 
-            // Si ya tenemos cliente y el update no trae cambios críticos de relación, solo mergeamos
-            if (existing?.client) {
-              return prev.map(c =>
-                c.id === payload.new.id ? { ...c, ...payload.new, client: c.client } : c
-              );
-            }
-
-            // Si no tenemos cliente o es una conversación nueva detectada via UPDATE,
-            // marcamos para fetch o mergeamos payload.new
-            return prev.map(c =>
-              c.id === payload.new.id ? { ...c, ...payload.new } : c
-            );
+            // Al actualizar por RT la conversación, intentamos preservar el sender.
+            // Si el mensaje en el payload es distinto al que teníamos, es posible que el sender haya cambiado.
+            return prev.map(c => {
+              if (c.id === payload.new.id) {
+                const senderChanged = payload.new.last_message !== c.last_message;
+                return {
+                  ...c,
+                  ...payload.new,
+                  // Si el mensaje cambió, reseteamos el sender a 'inbound' como fallback seguro 
+                  // hasta que el evento de mensaje (RT Global) lo confirme
+                  last_message_sender: senderChanged ? 'inbound' : (c.last_message_sender || 'inbound'),
+                  client: c.client
+                };
+              }
+              return c;
+            });
           });
 
           // Fetch asíncrono si es necesario (fuera del state update para evitar efectos secundarios)
@@ -746,6 +802,7 @@ const App = () => {
               const newConv = {
                 ...conv,
                 last_message: newMessage.body,
+                last_message_sender: newMessage.direction,
                 last_message_at: newMessage.created_at,
                 // Si el mensaje es entrante y NO estamos viendo ese chat, sumar 1 al contador
                 unread_count: (newMessage.direction === 'inbound' && selectedChatRef.current?.conversationId !== conv.id)
@@ -978,7 +1035,7 @@ const App = () => {
       await closeConversation(selectedChat.conversationId, reason, profile?.id);
       // Refrescar lista de conversaciones
       const convs = await getConversations(selectedPhone.id);
-      setConversations(convs || []);
+      await enrichAndSetConversations(convs);
       setSelectedChat(null);
     } catch (err) {
       console.error('Error cerrando conversación:', err);
@@ -992,7 +1049,7 @@ const App = () => {
       await reopenConversation(selectedChat.conversationId);
       // Refrescar lista de conversaciones cerradas
       const convs = await getClosedConversations(selectedPhone.id);
-      setConversations(convs || []);
+      await enrichAndSetConversations(convs);
       setSelectedChat(null);
       // Opcional: cambiar a vista de abiertas
       setShowClosedConversations(false);
@@ -1060,7 +1117,10 @@ const App = () => {
   const realChatsFormatted = conversations.map(conv => ({
     id: conv.id,
     name: conv.client?.full_name || conv.client?.phone_number || 'Sin nombre',
-    lastMsg: conv.last_message || 'Sin mensajes',
+    // Agregar prefijo Tu: o Cliente: según el emisor
+    lastMsg: conv.last_message
+      ? `${(conv.last_message_sender === 'inbound') ? 'Cliente' : 'Tu'}: ${conv.last_message}`
+      : 'Sin mensajes',
     time: conv.last_message_at ? formatSmartDate(conv.last_message_at) : '',
     date: conv.last_message_at ? conv.last_message_at.split('T')[0] : '',
     type: conv.classification === 'opportunity' ? 'Oportunidad' :
@@ -1237,7 +1297,20 @@ const App = () => {
                       )}
                     </button>
                     <button onClick={() => setCurrentView('settings')} className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><Settings size={16} /></button>
-                    <div className={`w-9 h-9 rounded-full ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-200 border-gray-300'} flex items-center justify-center border cursor-pointer`}><User size={18} className={theme.textMuted} /></div>
+                    {/* Profile Icon / Initials */}
+                    <div className={`w-9 h-9 rounded-full ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-200 border-gray-300'} flex items-center justify-center border cursor-pointer overflow-hidden group transition-all hover:border-gold/50`}>
+                      {profile?.full_name ? (
+                        <span className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'}`}>
+                          {profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </span>
+                      ) : user?.email ? (
+                        <span className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'}`}>
+                          {user.email.slice(0, 2).toUpperCase()}
+                        </span>
+                      ) : (
+                        <User size={18} className={theme.textMuted} />
+                      )}
+                    </div>
                     <button
                       onClick={signOut}
                       className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors text-red-400 ${isDarkMode ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
@@ -1575,7 +1648,7 @@ const App = () => {
                       </div>
 
                       {/* EDITOR DE RESPUESTA (Aquí para Móvil) */}
-                      {isCompactView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} reasoning={conversationAnalyses[currentAnalysisIndex]?.reasoning} />}
+                      {isCompactView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} chatMessages={chatMessages} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} reasoning={conversationAnalyses[currentAnalysisIndex]?.reasoning} />}
                     </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center opacity-40"><MessageCircle size={64} className="mb-4 text-gray-400" /><p className={`text-sm font-medium ${theme.textMuted}`}>Selecciona una conversación</p></div>
@@ -1708,7 +1781,7 @@ const App = () => {
                       </div>
 
                       {/* EDITOR DE RESPUESTA (Aquí para Desktop) */}
-                      {!isMobileView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} reasoning={conversationAnalyses[currentAnalysisIndex]?.reasoning} />}
+                      {!isMobileView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} chatMessages={chatMessages} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} reasoning={conversationAnalyses[currentAnalysisIndex]?.reasoning} />}
                     </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center opacity-40 p-8 text-center"><ShieldCheck size={48} className="mb-4 text-gray-400" /><p className={`text-xs font-bold uppercase tracking-widest ${theme.textMuted}`}>Esperando análisis...</p></div>
@@ -1760,7 +1833,7 @@ const App = () => {
 };
 
 // Componente ReplyEditor extraído para evitar re-renders innecesarios
-const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages, reasoning }) => {
+const ReplyEditor = ({ chat, chatMessages, theme, isDarkMode, selectedPhone, setChatMessages, reasoning }) => {
   // Si no hay análisis de IA aún, usar valores por defecto
   const category = chat?.aiAnalysis?.category || 'valuation';
   const suggestedReply = reasoning || chat?.suggestedReply || '';
@@ -1772,7 +1845,10 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages, 
 
   // Actualizar default si cambia la sugerencia y el usuario no ha editado el texto
   useEffect(() => {
-    if (suggestedReply !== lastAutoPopulated.current) {
+    // Solo autopoblar si NO hay mensajes salientes (esto es para que no estorbe en conversaciones ya activas)
+    const hasOutbound = chatMessages?.some(m => m.direction === 'outbound');
+
+    if (suggestedReply !== lastAutoPopulated.current && !hasOutbound) {
       // Si el cuerpo actual coincide con lo que autopoblamos la última vez (o está vacío),
       // significa que el usuario no ha empezado a escribir su propia respuesta
       if (responseBody === lastAutoPopulated.current || !responseBody.trim()) {
@@ -1780,7 +1856,7 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages, 
         lastAutoPopulated.current = suggestedReply;
       }
     }
-  }, [suggestedReply, responseBody]);
+  }, [suggestedReply, responseBody, chatMessages]);
 
   const handleSend = async () => {
     if (!responseBody.trim()) return;
