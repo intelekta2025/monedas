@@ -310,6 +310,33 @@ const App = () => {
 
   const getTodayDate = () => new Date().toISOString().split('T')[0];
 
+  // Helper: Extraer análisis de IA de mensajes
+  const extractAnalysesFromMessages = (msgs) => {
+    const lg = [];
+    (msgs || []).forEach(msg => {
+      if (msg.media && Array.isArray(msg.media)) {
+        msg.media.forEach(m => {
+          if (m.ai_analysis) {
+            try {
+              const parsed = typeof m.ai_analysis === 'string'
+                ? JSON.parse(m.ai_analysis)
+                : m.ai_analysis;
+              lg.push({
+                ...parsed,
+                media_url: m.media_url,
+                media_id: m.id,
+                user_feedback: m.ai_feedback // Incluir feedback existente
+              });
+            } catch (e) {
+              console.error('Error parsing ai_analysis:', e);
+            }
+          }
+        });
+      }
+    });
+    return lg;
+  };
+
   // --- Helper: Sincronizar clasificación con IA (Automático) ---
   const syncClassification = async (conversationId) => {
     if (!conversationId) return;
@@ -933,6 +960,10 @@ const App = () => {
     setShowMobileInfo(false);
     setFeedback(null);
 
+    // Limpiar análisis anteriores inmediatamente para evitar leaks de UI
+    setConversationAnalyses([]);
+    setCurrentAnalysisIndex(0);
+
     // Si es una conversación real, cargar los mensajes
     if (chat.conversationId) {
       // Guardar referencia del chat actual
@@ -943,6 +974,10 @@ const App = () => {
       if (cachedMessages) {
         console.log('📦 [CACHE] Usando mensajes en memoria para:', chat.conversationId);
         setChatMessages(cachedMessages);
+
+        // Cargar análisis desde el caché también
+        const cachedAnalyses = extractAnalysesFromMessages(cachedMessages);
+        setConversationAnalyses(cachedAnalyses);
         // No ponemos loading(true) para que la UI no parpadee
       } else {
         setChatMessages([]);
@@ -964,29 +999,8 @@ const App = () => {
           setChatMessages(msgs || []);
           setLoadError(null);
 
-          // Extraer análisis de IA de todos los media
-          const analyses = [];
-          (msgs || []).forEach(msg => {
-            if (msg.media && Array.isArray(msg.media)) {
-              msg.media.forEach(m => {
-                if (m.ai_analysis) {
-                  try {
-                    const parsed = typeof m.ai_analysis === 'string'
-                      ? JSON.parse(m.ai_analysis)
-                      : m.ai_analysis;
-                    analyses.push({
-                      ...parsed,
-                      media_url: m.media_url,
-                      media_id: m.id,
-                      user_feedback: m.ai_feedback // Incluir feedback existente
-                    });
-                  } catch (e) {
-                    console.error('Error parsing ai_analysis:', e);
-                  }
-                }
-              });
-            }
-          });
+          // Extraer análisis de IA de todos los media usando el helper
+          const analyses = extractAnalysesFromMessages(msgs);
           console.log('handleChatSelect: Análisis extraídos:', analyses);
           setConversationAnalyses(analyses);
           setCurrentAnalysisIndex(0);
@@ -1146,7 +1160,8 @@ const App = () => {
       allMedia: m.media || []
     })),
     aiAnalysis: null, // Se agregará con la integración de IA
-    suggestedReply: ''
+    suggestedReply: '',
+    status: conv.status
   }));
 
   // Usar solo conversaciones reales (sin demo data)
@@ -1940,17 +1955,23 @@ const ReplyEditor = ({ chat, chatMessages, theme, isDarkMode, selectedPhone, set
 
       <div className={`rounded-xl border shadow-inner overflow-hidden flex flex-col ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-200'}`}>
         <textarea
-          className={`w-full p-3 lg:p-4 bg-transparent border-none outline-none text-sm resize-none font-medium leading-relaxed overflow-y-auto custom-scrollbar h-40 lg:h-64 ${theme.text}`}
+          className={`w-full p-3 lg:p-4 bg-transparent border-none outline-none text-sm resize-none font-medium leading-relaxed overflow-y-auto custom-scrollbar h-40 lg:h-64 ${theme.text} ${chat?.status === 'closed' ? 'opacity-50 cursor-not-allowed' : ''}`}
           value={responseBody}
           onChange={(e) => setResponseBody(e.target.value)}
-          placeholder="Escribe tu respuesta aquí..."
-          disabled={isSending}
+          placeholder={chat?.status === 'closed' ? "Conversación cerrada" : "Escribe tu respuesta aquí..."}
+          disabled={isSending || chat?.status === 'closed'}
         />
-        <div className={`p-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-200'} bg-opacity-50 flex justify-end`}>
+        <div className={`p-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-200'} bg-opacity-50 flex justify-between items-center`}>
+          {chat?.status === 'closed' ? (
+            <div className="flex items-center gap-2 text-red-500 font-bold text-[10px] uppercase ml-2 animate-pulse">
+              <AlertCircle size={14} />
+              <span>Esta conversación está cerrada. Reábrela para responder.</span>
+            </div>
+          ) : <div></div>}
           <button
             onClick={handleSend}
-            disabled={isSending || !responseBody.trim()}
-            className={`py-2 px-4 lg:px-6 rounded-lg font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-2 text-white ${isSending ? 'opacity-50 cursor-not-allowed' : ''} ${category === 'inquiry'
+            disabled={isSending || !responseBody.trim() || chat?.status === 'closed'}
+            className={`py-2 px-4 lg:px-6 rounded-lg font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center gap-2 text-white ${isSending || chat?.status === 'closed' ? 'opacity-50 cursor-not-allowed' : ''} ${category === 'inquiry'
               ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-blue-500/20'
               : 'bg-gradient-to-r from-gold-dark to-gold shadow-gold/20'
               }`}>
