@@ -272,10 +272,43 @@ const App = () => {
     return () => window.removeEventListener('resize', detectDevice);
   }, []);
 
-  // Helper para fechas
+  // Helper para fechas inteligentes
+  const formatSmartDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+
+    // Resetear horas para comparación de solo fecha
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    // Mismo día
+    if (targetDate.getTime() === today.getTime()) {
+      return date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+
+    // Ayer
+    if (targetDate.getTime() === yesterday.getTime()) {
+      return 'Ayer';
+    }
+
+    // Esta semana (últimos 6 días)
+    const diffTime = today.getTime() - targetDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 7) {
+      const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      return days[date.getDay()];
+    }
+
+    // Más antiguo
+    return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' });
+  };
+
   const getTodayDate = () => new Date().toISOString().split('T')[0];
-  const todayStr = '24/10';
-  const yesterdayStr = '23/10';
 
   // --- Helper: Sincronizar clasificación con IA (Automático) ---
   const syncClassification = async (conversationId) => {
@@ -1010,11 +1043,7 @@ const App = () => {
     id: conv.id,
     name: conv.client?.full_name || conv.client?.phone_number || 'Sin nombre',
     lastMsg: conv.last_message || 'Sin mensajes',
-    time: conv.last_message_at
-      ? new Date(conv.last_message_at).toLocaleString('es-MX', {
-        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true
-      })
-      : '',
+    time: conv.last_message_at ? formatSmartDate(conv.last_message_at) : '',
     date: conv.last_message_at ? conv.last_message_at.split('T')[0] : '',
     type: conv.classification === 'opportunity' ? 'Oportunidad' :
       conv.classification === 'trash' ? 'Basura' :
@@ -1452,44 +1481,60 @@ const App = () => {
                             </div>
                           </div>
                         ) : selectedChat.conversationId && chatMessages.length > 0 ? (
-                          chatMessages.map((msg, idx) => {
-                            const sender = msg.direction === 'inbound' ? 'user' : 'bot';
-                            const msgTime = new Date(msg.created_at).toLocaleString('es-MX', {
-                              hour: '2-digit', minute: '2-digit', hour12: true
-                            });
-                            const hasImage = msg.num_media > 0 && msg.media?.length > 0 && msg.media[0]?.media_url;
-                            // Debug: log para ver datos de media
-                            // Log removido a petición del usuario para mejor legibilidad
-                            return (
-                              <div key={msg.id || idx} className={`flex ${sender === 'user' ? 'justify-start' : 'justify-end'}`}>
-                                <div className={`max-w-[85%] lg:max-w-[80%] rounded-2xl p-3 lg:p-4 text-sm leading-relaxed relative group transition-all ${sender === 'user' ? theme.chatBubbleUser : theme.chatBubbleBot} ${sender === 'user' ? 'rounded-tl-none' : 'rounded-tr-none'}`}>
-                                  {hasImage ? (
-                                    <div className="space-y-2">
-                                      <div className="relative rounded-lg overflow-hidden shadow-md">
-                                        <img src={msg.media[0].media_url} alt="Evidencia" className="w-full h-auto object-cover max-h-[300px]" />
-                                      </div>
-                                      {msg.body && <p className={`text-xs ${theme.textMuted} italic`}>{msg.body}</p>}
+                          (() => {
+                            let lastDate = null;
+                            return chatMessages.map((msg, idx) => {
+                              const sender = msg.direction === 'inbound' ? 'user' : 'bot';
+                              const msgDateObj = new Date(msg.created_at);
+                              const msgDate = msgDateObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+                              const msgTime = msgDateObj.toLocaleString('es-MX', {
+                                hour: '2-digit', minute: '2-digit', hour12: true
+                              });
+
+                              const showSeparator = msgDate !== lastDate;
+                              lastDate = msgDate;
+
+                              const hasImage = msg.num_media > 0 && msg.media?.length > 0 && msg.media[0]?.media_url;
+
+                              return (
+                                <React.Fragment key={msg.id || idx}>
+                                  {showSeparator && (
+                                    <div className="flex justify-center my-6">
+                                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm border ${isDarkMode ? 'bg-slate-900/80 border-slate-800 text-slate-500' : 'bg-gray-100/80 border-gray-200 text-gray-400'}`}>
+                                        {msgDate}
+                                      </span>
                                     </div>
-                                  ) : msg.num_media > 0 ? (
-                                    // Fallback: tiene media pero no se pudo cargar
-                                    <div className="space-y-2">
-                                      <div className={`flex items-center gap-2 p-3 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-gray-100'}`}>
-                                        <ImageIcon size={20} className="text-blue-500" />
-                                        <span className={`text-sm ${theme.text}`}>📎 Imagen adjunta ({msg.num_media})</span>
-                                      </div>
-                                      {msg.body && <p className={theme.text}>{msg.body}</p>}
-                                    </div>
-                                  ) : (
-                                    <p className={isDarkMode || sender === 'bot' ? theme.text : 'text-gray-700'}>{msg.body}</p>
                                   )}
-                                  <div className={`flex items-center gap-1 mt-1.5 opacity-40 text-[9px] font-bold uppercase ${sender === 'user' ? 'justify-start' : 'justify-end'}`}>
-                                    {msgTime}
-                                    {sender === 'bot' && <CheckCircle size={10} />}
+                                  <div className={`flex ${sender === 'user' ? 'justify-start' : 'justify-end'}`}>
+                                    <div className={`max-w-[85%] lg:max-w-[80%] rounded-2xl p-3 lg:p-4 text-sm leading-relaxed relative group transition-all ${sender === 'user' ? theme.chatBubbleUser : theme.chatBubbleBot} ${sender === 'user' ? 'rounded-tl-none' : 'rounded-tr-none'}`}>
+                                      {hasImage ? (
+                                        <div className="space-y-2">
+                                          <div className="relative rounded-lg overflow-hidden shadow-md">
+                                            <img src={msg.media[0].media_url} alt="Evidencia" className="w-full h-auto object-cover max-h-[300px]" />
+                                          </div>
+                                          {msg.body && <p className={`text-xs ${theme.textMuted} italic`}>{msg.body}</p>}
+                                        </div>
+                                      ) : msg.num_media > 0 ? (
+                                        <div className="space-y-2">
+                                          <div className={`flex items-center gap-2 p-3 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-gray-100'}`}>
+                                            <ImageIcon size={20} className="text-blue-500" />
+                                            <span className={`text-sm ${theme.text}`}>📎 Imagen adjunta ({msg.num_media})</span>
+                                          </div>
+                                          {msg.body && <p className={theme.text}>{msg.body}</p>}
+                                        </div>
+                                      ) : (
+                                        <p className={isDarkMode || sender === 'bot' ? theme.text : 'text-gray-700'}>{msg.body}</p>
+                                      )}
+                                      <div className={`flex items-center gap-1 mt-1.5 opacity-40 text-[9px] font-bold uppercase ${sender === 'user' ? 'justify-start' : 'justify-end'}`}>
+                                        {msgTime}
+                                        {sender === 'bot' && <CheckCircle size={10} />}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              </div>
-                            );
-                          })
+                                </React.Fragment>
+                              );
+                            });
+                          })()
                         ) : selectedChat.history && selectedChat.history.length > 0 ? (
                           selectedChat.history.map((msg, idx) => (
                             <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}>
