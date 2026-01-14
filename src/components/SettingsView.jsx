@@ -22,6 +22,12 @@ import {
     updateWhatsappPhone,
     deleteWhatsappPhone
 } from '../services/whatsappService';
+import {
+    getUsers,
+    createUser,
+    updateUser,
+    deleteUser
+} from '../services/userService';
 
 const SettingsView = ({ onBack, isDarkMode }) => {
     const [activeSection, setActiveSection] = useState(null);
@@ -35,6 +41,14 @@ const SettingsView = ({ onBack, isDarkMode }) => {
     const [editingPhone, setEditingPhone] = useState(null);
     const [deletingPhone, setDeletingPhone] = useState(null);
     const [saving, setSaving] = useState(false);
+
+    // User management states
+    const [users, setUsers] = useState([]);
+    const [loadingUsers, setLoadingUsers] = useState(false);
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [showDeleteUserModal, setShowDeleteUserModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [deletingUser, setDeletingUser] = useState(null);
 
     const theme = {
         bg: isDarkMode ? 'bg-slate-950' : 'bg-gray-50',
@@ -61,16 +75,28 @@ const SettingsView = ({ onBack, isDarkMode }) => {
         }
     };
 
+    // Cargar usuarios
+    const loadUsers = async () => {
+        setLoadingUsers(true);
+        setError(null);
+        try {
+            const data = await getUsers();
+            setUsers(data || []);
+        } catch (err) {
+            console.error('Error cargando usuarios:', err);
+            setError(err.message || 'Error al cargar los usuarios');
+        } finally {
+            setLoadingUsers(false);
+        }
+    };
+
     useEffect(() => {
         if (activeSection === 'whatsapp') {
             loadWhatsappPhones();
+        } else if (activeSection === 'users') {
+            loadUsers();
         }
     }, [activeSection]);
-
-    // Datos de ejemplo para Usuarios (TODO: implementar servicio)
-    const [users] = useState([
-        { id: 1, name: 'Alva Martinez', email: 'alva@intelekta.ai', role: 'Admin', status: 'active' },
-    ]);
 
     const menuItems = [
         {
@@ -140,6 +166,68 @@ const SettingsView = ({ onBack, isDarkMode }) => {
         } catch (err) {
             console.error('Error eliminando teléfono:', err);
             setError('Error al eliminar el teléfono');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // Handlers para Users CRUD
+    const handleAddUser = () => {
+        setEditingUser(null);
+        setShowUserModal(true);
+    };
+
+    const handleEditUser = (user) => {
+        setEditingUser(user);
+        setShowUserModal(true);
+    };
+
+    const handleDeleteUserClick = (user) => {
+        setDeletingUser(user);
+        setShowDeleteUserModal(true);
+    };
+
+    const handleSaveUser = async (userData) => {
+        setSaving(true);
+        setError(null);
+        try {
+            if (editingUser) {
+                // Actualizar usuario existente
+                // Excluir password y email que no son editables en profile así
+                // eslint-disable-next-line no-unused-vars
+                const { password, email, ...updateData } = userData;
+                await updateUser(editingUser.id, updateData);
+            } else {
+                // Crear nuevo usuario
+                await createUser(
+                    userData.email,
+                    userData.password,
+                    userData.full_name,
+                    userData.role
+                );
+            }
+            await loadUsers();
+            setShowUserModal(false);
+            setEditingUser(null);
+        } catch (err) {
+            console.error('Error guardando usuario:', err);
+            setError(err.message || 'Error al guardar el usuario');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleConfirmDeleteUser = async () => {
+        if (!deletingUser) return;
+        setSaving(true);
+        try {
+            await deleteUser(deletingUser.id);
+            await loadUsers();
+            setShowDeleteUserModal(false);
+            setDeletingUser(null);
+        } catch (err) {
+            console.error('Error eliminando usuario:', err);
+            setError(err.message || 'Error al eliminar el usuario');
         } finally {
             setSaving(false);
         }
@@ -340,6 +428,179 @@ const SettingsView = ({ onBack, isDarkMode }) => {
         </div>
     );
 
+    // Modal de usuario (crear/editar)
+    const UserFormModal = () => {
+        const [formData, setFormData] = useState({
+            email: editingUser?.email || '',
+            password: '',
+            full_name: editingUser?.full_name || '',
+            role: editingUser?.role || 'operator',
+            status: editingUser?.status || 'active',
+        });
+
+        const handleChange = (e) => {
+            setFormData({ ...formData, [e.target.name]: e.target.value });
+        };
+
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            handleSaveUser(formData);
+        };
+
+        return (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className={`${theme.modalBg} rounded-2xl shadow-2xl w-full max-w-lg border ${theme.cardBorder} max-h-[90vh] overflow-y-auto`}>
+                    <div className={`p-5 border-b ${theme.cardBorder} flex items-center justify-between`}>
+                        <h3 className={`font-bold text-lg ${theme.text}`}>
+                            {editingUser ? 'Editar Usuario' : 'Agregar Usuario'}
+                        </h3>
+                        <button
+                            onClick={() => setShowUserModal(false)}
+                            className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-100'} ${theme.textMuted}`}
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                        {/* Email */}
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold ${theme.textMuted} uppercase`}>Email *</label>
+                            <input
+                                type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50`}
+                                placeholder="usuario@ejemplo.com"
+                                required
+                                disabled={!!editingUser}
+                            />
+                            {editingUser && (
+                                <p className={`text-xs ${theme.textMuted}`}>El email no se puede modificar</p>
+                            )}
+                        </div>
+
+                        {/* Contraseña - solo para creación */}
+                        {!editingUser && (
+                            <div className="space-y-1">
+                                <label className={`text-xs font-bold ${theme.textMuted} uppercase`}>Contraseña *</label>
+                                <input
+                                    type="password"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50`}
+                                    placeholder="Mínimo 6 caracteres"
+                                    required
+                                    minLength={6}
+                                />
+                            </div>
+                        )}
+
+                        {/* Nombre completo */}
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold ${theme.textMuted} uppercase`}>Nombre Completo *</label>
+                            <input
+                                type="text"
+                                name="full_name"
+                                value={formData.full_name}
+                                onChange={handleChange}
+                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50`}
+                                placeholder="Ej. Juan Pérez"
+                                required
+                            />
+                        </div>
+
+                        {/* Rol */}
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold ${theme.textMuted} uppercase`}>Rol *</label>
+                            <select
+                                name="role"
+                                value={formData.role}
+                                onChange={handleChange}
+                                className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-gold/50`}
+                            >
+                                <option value="admin">Admin</option>
+                                <option value="operator">Operador</option>
+                                <option value="viewer">Visualizador</option>
+                            </select>
+                        </div>
+
+                        {/* Estado - solo para edición */}
+                        {editingUser && (
+                            <div className="space-y-1">
+                                <label className={`text-xs font-bold ${theme.textMuted} uppercase`}>Estado</label>
+                                <select
+                                    name="status"
+                                    value={formData.status}
+                                    onChange={handleChange}
+                                    className={`w-full ${theme.inputBg} border ${theme.cardBorder} ${theme.text} rounded-xl py-3 px-4 outline-none focus:border-gold/50`}
+                                >
+                                    <option value="active">Activo</option>
+                                    <option value="suspended">Suspendido</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Botones */}
+                        <div className="flex gap-3 pt-4">
+                            <button
+                                type="button"
+                                onClick={() => setShowUserModal(false)}
+                                className={`flex-1 py-3 rounded-xl font-bold text-sm border ${theme.cardBorder} ${theme.text} ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-100'} transition-colors`}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={saving}
+                                className="flex-1 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-gold-dark to-gold text-white shadow-lg shadow-gold/20 hover:from-gold hover:to-gold-light transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                            >
+                                {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                                {saving ? 'Guardando...' : 'Guardar'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    };
+
+    // Modal de confirmación de eliminación de usuario
+    const UserDeleteConfirmModal = () => (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className={`${theme.modalBg} rounded-2xl shadow-2xl w-full max-w-md border ${theme.cardBorder}`}>
+                <div className="p-6 text-center">
+                    <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                        <Trash2 size={32} className="text-red-500" />
+                    </div>
+                    <h3 className={`font-bold text-lg ${theme.text} mb-2`}>¿Eliminar usuario?</h3>
+                    <p className={`${theme.textMuted} text-sm mb-6`}>
+                        Estás por eliminar a <strong className={theme.text}>{deletingUser?.full_name}</strong>.
+                        Esta acción no se puede deshacer.
+                    </p>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => setShowDeleteUserModal(false)}
+                            className={`flex-1 py-3 rounded-xl font-bold text-sm border ${theme.cardBorder} ${theme.text} ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-100'} transition-colors`}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleConfirmDeleteUser}
+                            disabled={saving}
+                            className="flex-1 py-3 rounded-xl font-bold text-sm bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+                        >
+                            {saving ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                            {saving ? 'Eliminando...' : 'Eliminar'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     // Renderizar sección de WhatsApp
     const renderWhatsAppSection = () => (
         <div className="space-y-4">
@@ -446,7 +707,10 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                     <ArrowLeft size={18} />
                     <span className="text-sm font-medium">Volver</span>
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gold-dark to-gold text-white text-sm font-bold rounded-xl shadow-lg shadow-gold/20 hover:from-gold hover:to-gold-light transition-all">
+                <button
+                    onClick={handleAddUser}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gold-dark to-gold text-white text-sm font-bold rounded-xl shadow-lg shadow-gold/20 hover:from-gold hover:to-gold-light transition-all"
+                >
                     <Plus size={16} />
                     Agregar Usuario
                 </button>
@@ -457,41 +721,73 @@ const SettingsView = ({ onBack, isDarkMode }) => {
                 Usuarios del Sistema
             </h2>
 
-            <div className="space-y-3">
-                {users.map((user) => (
-                    <div
-                        key={user.id}
-                        className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl p-4 flex items-center justify-between group hover:border-gold/30 transition-all`}
+            {error && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                    <AlertCircle size={18} />
+                    <span>{error}</span>
+                </div>
+            )}
+
+            {loadingUsers ? (
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 size={32} className="animate-spin text-gold" />
+                </div>
+            ) : users.length === 0 ? (
+                <div className={`text-center py-12 ${theme.textMuted}`}>
+                    <Users size={48} className="mx-auto mb-4 opacity-30" />
+                    <p className="text-sm">No hay usuarios registrados</p>
+                    <button
+                        onClick={handleAddUser}
+                        className="mt-4 text-gold hover:text-gold-light text-sm font-medium"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-gray-100'} flex items-center justify-center font-bold ${theme.text}`}>
-                                {user.name.split(' ').map(n => n[0]).join('')}
+                        + Agregar el primero
+                    </button>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {users.map((user) => (
+                        <div
+                            key={user.id}
+                            className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl p-4 flex items-center justify-between group hover:border-gold/30 transition-all`}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-gray-100'} flex items-center justify-center font-bold ${theme.text}`}>
+                                    {user.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                                </div>
+                                <div>
+                                    <p className={`font-bold ${theme.text}`}>{user.full_name || 'Sin nombre'}</p>
+                                    <p className={`text-sm ${theme.textMuted}`}>{user.email}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className={`font-bold ${theme.text}`}>{user.name}</p>
-                                <p className={`text-sm ${theme.textMuted}`}>{user.email}</p>
+                            <div className="flex items-center gap-3">
+                                <span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${user.role === 'admin'
+                                    ? 'text-purple-500 bg-purple-500/10'
+                                    : user.role === 'operator'
+                                        ? 'text-blue-500 bg-blue-500/10'
+                                        : 'text-gray-500 bg-gray-500/10'
+                                    }`}>
+                                    <Shield size={12} />
+                                    {user.role === 'admin' ? 'Admin' : user.role === 'operator' ? 'Operador' : 'Visualizador'}
+                                </span>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => handleEditUser(user)}
+                                        className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-100'} ${theme.textMuted}`}
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteUserClick(user)}
+                                        className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-100'} text-red-400`}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${user.role === 'Admin'
-                                ? 'text-purple-500 bg-purple-500/10'
-                                : 'text-blue-500 bg-blue-500/10'
-                                }`}>
-                                <Shield size={12} />
-                                {user.role}
-                            </span>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-100'} ${theme.textMuted}`}>
-                                    <Edit2 size={16} />
-                                </button>
-                                <button className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-100'} text-red-400`}>
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 
@@ -557,6 +853,8 @@ const SettingsView = ({ onBack, isDarkMode }) => {
             {/* Modals */}
             {showPhoneModal && <PhoneFormModal />}
             {showDeleteModal && <DeleteConfirmModal />}
+            {showUserModal && <UserFormModal />}
+            {showDeleteUserModal && <UserDeleteConfirmModal />}
         </div>
     );
 };
