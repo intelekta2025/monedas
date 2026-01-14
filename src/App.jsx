@@ -1003,15 +1003,15 @@ const App = () => {
 
   const theme = {
     bg: isDarkMode ? 'bg-slate-950' : 'bg-gray-50',
-    text: isDarkMode ? 'text-slate-200' : 'text-gray-800',
-    textMuted: isDarkMode ? 'text-slate-400' : 'text-gray-500',
+    text: isDarkMode ? 'text-white' : 'text-gray-800',
+    textMuted: isDarkMode ? 'text-slate-300' : 'text-gray-500',
     cardBg: isDarkMode ? 'bg-slate-900' : 'bg-white',
     cardBorder: isDarkMode ? 'border-slate-800' : 'border-gray-200',
     headerBg: isDarkMode ? 'bg-slate-900' : 'bg-white',
     inputBg: isDarkMode ? 'bg-slate-950' : 'bg-gray-100',
     accent: 'text-gold',
-    chatBubbleUser: isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200 shadow-sm',
-    chatBubbleBot: isDarkMode ? 'bg-gold-dark/20 border-gold/20' : 'bg-yellow-50 border-yellow-200',
+    chatBubbleUser: isDarkMode ? 'bg-slate-800 border-slate-700 shadow-lg shadow-black/20' : 'bg-white border-gray-200 shadow-sm',
+    chatBubbleBot: isDarkMode ? 'bg-gold-dark/20 border-gold/20 shadow-lg shadow-gold/5' : 'bg-yellow-50 border-yellow-200',
   };
 
   const handleClientUpdated = (updatedClient) => {
@@ -1398,7 +1398,7 @@ const App = () => {
                         <div className="flex items-center gap-2 lg:gap-3">
                           {isMobileView && <button onClick={handleBackToList} className="p-2 -ml-2 rounded-full hover:bg-slate-800 text-slate-400"><ArrowLeft size={20} /></button>}
                           <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center text-xs lg:text-sm font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>{selectedChat.avatar}</div>
-                          <div><h3 className={`font-bold text-sm ${theme.text}`}>{selectedChat.name}</h3><p className={`text-[10px] ${theme.textMuted} flex items-center gap-1`}>{selectedChat.contactNumber}</p></div>
+                          <div><h3 className={`font-bold text-sm lg:text-base ${theme.text}`}>{selectedChat.name}</h3><p className={`text-xs lg:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-500'} flex items-center gap-1`}>{selectedChat.contactNumber}</p></div>
                         </div>
                         <div className="flex gap-1">
                           {isCompactView && (
@@ -1527,10 +1527,10 @@ const App = () => {
                                     <div className={`max-w-[85%] lg:max-w-[80%] rounded-2xl p-3 lg:p-4 text-sm leading-relaxed relative group transition-all ${sender === 'user' ? theme.chatBubbleUser : theme.chatBubbleBot} ${sender === 'user' ? 'rounded-tl-none' : 'rounded-tr-none'}`}>
                                       {hasImage ? (
                                         <div className="space-y-2">
-                                          <div className="relative rounded-lg overflow-hidden shadow-md">
-                                            <img src={msg.media[0].media_url} alt="Evidencia" className="w-full h-auto object-cover max-h-[300px]" />
+                                          <div className="relative rounded-lg overflow-hidden shadow-lg border border-white/5 max-w-[240px]">
+                                            <img src={msg.media[0].media_url} alt="Evidencia" className="w-full h-auto object-cover max-h-[200px]" />
                                           </div>
-                                          {msg.body && <p className={`text-xs ${theme.textMuted} italic`}>{msg.body}</p>}
+                                          {msg.body && <p className={`text-sm lg:text-base ${isDarkMode ? 'text-white' : 'text-gray-700'} font-medium italic leading-relaxed`}>{msg.body}</p>}
                                         </div>
                                       ) : msg.num_media > 0 ? (
                                         <div className="space-y-2">
@@ -1541,7 +1541,7 @@ const App = () => {
                                           {msg.body && <p className={theme.text}>{msg.body}</p>}
                                         </div>
                                       ) : (
-                                        <p className={isDarkMode || sender === 'bot' ? theme.text : 'text-gray-700'}>{msg.body}</p>
+                                        <p className={`text-sm lg:text-base ${isDarkMode || sender === 'bot' ? 'text-white' : 'text-gray-800'} leading-relaxed`}>{msg.body}</p>
                                       )}
                                       <div className={`flex items-center gap-1 mt-1.5 opacity-40 text-[9px] font-bold uppercase ${sender === 'user' ? 'justify-start' : 'justify-end'}`}>
                                         {msgTime}
