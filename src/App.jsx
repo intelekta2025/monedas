@@ -1557,7 +1557,7 @@ const App = () => {
                       </div>
 
                       {/* EDITOR DE RESPUESTA (Aquí para Móvil) */}
-                      {isCompactView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} />}
+                      {isCompactView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} reasoning={conversationAnalyses[currentAnalysisIndex]?.reasoning} />}
                     </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center opacity-40"><MessageCircle size={64} className="mb-4 text-gray-400" /><p className={`text-sm font-medium ${theme.textMuted}`}>Selecciona una conversación</p></div>
@@ -1570,12 +1570,12 @@ const App = () => {
                 ${isCompactView ? 'w-full h-full' : isTabletView ? 'w-80 flex-shrink-0' : 'flex-1'} flex-col 
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} transition-colors duration-300 overflow-hidden
               `}>
-                  {isCompactView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-gold" /><h2 className="font-bold text-sm text-gold">Análisis IA</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
-                  {!isCompactView && <div className={`p-4 border-b ${theme.cardBorder} ${isDarkMode ? 'bg-gold-dark/10' : 'bg-gold-light/20'} flex items-center gap-2 flex-shrink-0`}><ShieldCheck size={18} className="text-gold" /><h2 className="font-bold text-sm text-gold-dark uppercase tracking-wider">{selectedChat?.aiAnalysis?.category === 'inquiry' ? 'Intención' : 'Análisis'}</h2></div>}
+                  {isCompactView && <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-gold" /><h2 className="font-bold text-sm text-gold uppercase tracking-wider">VEREDICTO DE JUNO</h2></div><button onClick={() => setShowMobileInfo(false)}><X size={24} className={theme.textMuted} /></button></div>}
+                  {!isCompactView && <div className={`p-4 border-b ${theme.cardBorder} ${isDarkMode ? 'bg-gold-dark/10' : 'bg-gold-light/20'} flex items-center gap-2 flex-shrink-0`}><ShieldCheck size={18} className="text-gold" /><h2 className="font-bold text-sm text-gold-dark uppercase tracking-wider">VEREDICTO DE JUNO</h2></div>}
 
                   {selectedChat ? (
                     <>
-                      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-0">
+                      <div className="overflow-y-auto custom-scrollbar p-5 pb-2">
                         {/* Si hay análisis de IA en la conversación */}
                         {conversationAnalyses.length > 0 ? (
                           <div className={`rounded-xl p-5 mb-2 relative overflow-hidden border shadow-sm ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-100'}`}>
@@ -1633,7 +1633,7 @@ const App = () => {
                                   <div className={`flex items-stretch justify-between mb-5 rounded-xl p-4 border ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-gray-50 border-gray-200'} shadow-inner`}>
 
                                     {/* Classification (Distributed) */}
-                                    <div className="flex-1 flex flex-col items-center border-r border-gray-500/20">
+                                    <div className="flex-1 flex flex-col items-center border-r border-gray-500/20 px-4">
                                       <p className={`text-[10px] uppercase font-bold mb-1 opacity-60 ${theme.textMuted}`}>Categoría</p>
                                       <div className={`flex items-center gap-1.5 text-xs lg:text-sm font-bold ${analysis.business_classification === 'OPORTUNIDAD' ? 'text-gold' : 'text-gray-400'}`}>
                                         <Star size={12} fill={analysis.business_classification === 'OPORTUNIDAD' ? 'currentColor' : 'none'} />
@@ -1642,47 +1642,37 @@ const App = () => {
                                     </div>
 
                                     {analysis.year && (
-                                      <div className="flex-1 flex flex-col items-center border-r border-gray-500/20">
+                                      <div className="flex-1 flex flex-col items-center border-r border-gray-500/20 px-4">
                                         <p className={`text-[10px] uppercase font-bold mb-1 opacity-60 ${theme.textMuted}`}>Año</p>
                                         <p className={`text-sm lg:text-base font-bold ${theme.text}`}>{analysis.year}</p>
                                       </div>
                                     )}
 
                                     {analysis.material_detected && (
-                                      <div className="flex-1 flex flex-col items-center border-r border-gray-500/20">
+                                      <div className="flex-1 flex flex-col items-center border-r border-gray-500/20 px-4">
                                         <p className={`text-[10px] uppercase font-bold mb-1 opacity-60 ${theme.textMuted}`}>Material</p>
                                         <p className={`text-sm lg:text-base font-bold ${theme.text}`}>{analysis.material_detected}</p>
                                       </div>
                                     )}
 
                                     {analysis.confidence && (
-                                      <div className="flex-1 flex flex-col items-center">
+                                      <div className="flex-1 flex flex-col items-center border-r border-gray-500/20 px-4">
                                         <p className={`text-[10px] uppercase font-bold mb-1 opacity-60 ${theme.textMuted}`}>Confianza</p>
                                         <p className={`text-sm lg:text-base font-bold ${analysis.confidence >= 80 ? 'text-gold' : analysis.confidence >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>{analysis.confidence}%</p>
                                       </div>
                                     )}
-                                  </div>
 
-                                  {/* Reasoning and Feedback - Integrated to save space */}
-                                  <div className={`mt-5 pt-5 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} flex flex-wrap items-start justify-between gap-4`}>
-                                    {analysis.reasoning ? (
-                                      <div className="flex-1 min-w-[200px]">
-                                        <p className={`text-sm lg:text-base leading-relaxed ${theme.text} font-medium`}>
-                                          <span className="font-bold mr-1.5 text-gold-dark">Juno comenta:</span>
-                                          {analysis.reasoning}
-                                        </p>
+                                    {/* Feedback buttons - Own column with header */}
+                                    <div className="flex-1 flex flex-col items-center px-4">
+                                      <p className={`text-[10px] uppercase font-bold mb-1 opacity-60 ${theme.textMuted}`}>¿Es correcto?</p>
+                                      <div className="flex items-center gap-1 mt-0.5">
+                                        <button onClick={() => handleFeedback('positive')} className={`p-1 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'positive' ? 'text-green-500 bg-green-500/10 scale-110' : 'text-gray-400 hover:text-green-500'}`} title="Correcto"><ThumbsUp size={14} /></button>
+                                        <button onClick={() => handleFeedback('negative')} className={`p-1 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'negative' ? 'text-red-500 bg-red-500/10 scale-110' : 'text-gray-400 hover:text-red-500'}`} title="Incorrecto"><ThumbsDown size={14} /></button>
                                       </div>
-                                    ) : (
-                                      <div className="flex-1" />
-                                    )}
-
-                                    {/* Feedback buttons - Inline with JUNO to save space */}
-                                    <div className="flex items-center gap-1 flex-shrink-0 pt-0.5">
-                                      <p className={`text-[9px] uppercase font-bold mr-2 ${theme.textMuted}`}>¿Correcto?</p>
-                                      <button onClick={() => handleFeedback('positive')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'positive' ? 'text-green-500 bg-green-500/10 scale-110' : 'text-gray-400 hover:text-green-500'}`}><ThumbsUp size={14} /></button>
-                                      <button onClick={() => handleFeedback('negative')} className={`p-1.5 rounded transition-colors ${conversationAnalyses[currentAnalysisIndex]?.user_feedback === 'negative' ? 'text-red-500 bg-red-500/10 scale-110' : 'text-gray-400 hover:text-red-500'}`}><ThumbsDown size={14} /></button>
                                     </div>
                                   </div>
+
+                                  {/* Reasoning and Feedback section removed from here as per user request */}
                                 </div>
                               );
                             })()}
@@ -1698,7 +1688,7 @@ const App = () => {
                       </div>
 
                       {/* EDITOR DE RESPUESTA (Aquí para Desktop) */}
-                      {!isMobileView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} />}
+                      {!isMobileView && <ReplyEditor key={selectedChat.conversationId} chat={selectedChat} theme={theme} isDarkMode={isDarkMode} selectedPhone={selectedPhone} setChatMessages={setChatMessages} reasoning={conversationAnalyses[currentAnalysisIndex]?.reasoning} />}
                     </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center opacity-40 p-8 text-center"><ShieldCheck size={48} className="mb-4 text-gray-400" /><p className={`text-xs font-bold uppercase tracking-widest ${theme.textMuted}`}>Esperando análisis...</p></div>
@@ -1750,10 +1740,10 @@ const App = () => {
 };
 
 // Componente ReplyEditor extraído para evitar re-renders innecesarios
-const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages }) => {
+const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages, reasoning }) => {
   // Si no hay análisis de IA aún, usar valores por defecto
   const category = chat?.aiAnalysis?.category || 'valuation';
-  const suggestedReply = chat?.suggestedReply || '';
+  const suggestedReply = reasoning || chat?.suggestedReply || '';
 
   // Estado para el mensaje
   const [responseBody, setResponseBody] = useState(suggestedReply);
