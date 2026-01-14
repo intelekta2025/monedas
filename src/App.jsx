@@ -629,10 +629,12 @@ const App = () => {
         }
 
         // 2. SIEMPRE actualizar la lista lateral (Conversaciones)
+        let convToUpdate = null;
+
         setConversations(prev => {
-          return prev.map(conv => {
+          const updated = prev.map(conv => {
             if (conv.id === newMessage.conversation_id) {
-              return {
+              const newConv = {
                 ...conv,
                 last_message: newMessage.body,
                 last_message_at: newMessage.created_at,
@@ -641,10 +643,51 @@ const App = () => {
                   ? (conv.unread_count || 0) + 1
                   : conv.unread_count
               };
+
+              // Si le falta el cliente, lo guardamos para fetch
+              if (!newConv.client || newConv.client.full_name === null) {
+                convToUpdate = newConv.id;
+              }
+
+              return newConv;
             }
             return conv;
           });
+
+          // Si el mensaje viene de una conversación que NO está en la lista (Conversación nueva REAL)
+          // esto puede pasar si el subscription level 1 falló o es muy lento.
+          if (!prev.find(c => c.id === newMessage.conversation_id)) {
+            console.log('RT [GLOBAL]: Mensaje de conversación desconocida, solicitando fetch total...');
+            convToUpdate = newMessage.conversation_id;
+          }
+
+          return updated;
         });
+
+        // 3. Resolución de nombre si es necesario
+        if (convToUpdate) {
+          console.log('RT [GLOBAL]: Resolviendo datos de cliente para conversación:', convToUpdate);
+          try {
+            const { data: fullConv } = await supabase
+              .from('whatsapp_conversations')
+              .select('*, client:clients(*)')
+              .eq('id', convToUpdate)
+              .single();
+
+            if (fullConv?.client) {
+              console.log('RT [GLOBAL]: Datos recuperados con éxito:', fullConv.client.full_name);
+              setConversations(prev => {
+                const alreadyExists = prev.find(c => c.id === fullConv.id);
+                if (alreadyExists) {
+                  return prev.map(c => c.id === fullConv.id ? fullConv : c);
+                }
+                return [fullConv, ...prev];
+              });
+            }
+          } catch (err) {
+            console.error('RT [GLOBAL]: Error recuperando datos:', err);
+          }
+        }
       });
     }
 
