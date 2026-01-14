@@ -1790,6 +1790,22 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages, 
     }
 
     setIsSending(true);
+    const tempId = 'temp-' + Date.now();
+    const currentBody = responseBody;
+
+    // --- OPTIMISTIC UPDATE (Antes del fetch para evitar race conditions) ---
+    const optimisticMsg = {
+      id: tempId,
+      conversation_id: chat.conversationId,
+      direction: 'outbound',
+      body: currentBody,
+      created_at: new Date().toISOString(),
+      status: 'sending'
+    };
+
+    setChatMessages(prev => [...prev, optimisticMsg]);
+    setResponseBody('');
+
     try {
       // URL del Webhook de n8n con fallback de producción
       let WEBHOOK_URL = import.meta.env.VITE_N8N_OUTBOUND_WEBHOOK || 'https://n8n-t.intelekta.ai/webhook/webhook-outbound';
@@ -1797,12 +1813,6 @@ const ReplyEditor = ({ chat, theme, isDarkMode, selectedPhone, setChatMessages, 
       // En desarrollo, usar el proxy para evitar CORS si es la URL de production
       if (import.meta.env.DEV && WEBHOOK_URL.includes('https://n8n-t.intelekta.ai/webhook')) {
         WEBHOOK_URL = WEBHOOK_URL.replace('https://n8n-t.intelekta.ai/webhook', '/api/n8n');
-      }
-
-      if (!WEBHOOK_URL) {
-        alert('Error: Webhook de n8n no configurado. Verifica VITE_N8N_OUTBOUND_WEBHOOK en .env');
-        setIsSending(false);
-        return;
       }
 
       const payload = {
