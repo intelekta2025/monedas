@@ -340,7 +340,7 @@ const App = () => {
           if (parsed.business_classification === 'OPORTUNIDAD') {
             aiClass = 'opportunity';
             break;
-          } else if ((parsed.business_classification === 'BASURA' || parsed.business_classification === 'NO_ES_MONEDA') && !aiClass) {
+          } else if ((parsed.business_classification === 'COMUN' || parsed.business_classification === 'NO_ES_MONEDA') && !aiClass) {
             aiClass = 'trash';
           }
         } catch (e) { }
@@ -1046,7 +1046,7 @@ const App = () => {
     time: conv.last_message_at ? formatSmartDate(conv.last_message_at) : '',
     date: conv.last_message_at ? conv.last_message_at.split('T')[0] : '',
     type: conv.classification === 'opportunity' ? 'Oportunidad' :
-      conv.classification === 'trash' ? 'Basura' :
+      conv.classification === 'trash' ? 'Común' :
         'Consulta', // Default: 'inquiry' o null se tratan como Consulta
     priority: conv.unread_count > 0 ? 'Alta' : 'Media',
     avatar: (conv.client?.full_name || conv.client?.phone_number || '??').slice(0, 2).toUpperCase(),
@@ -1079,7 +1079,7 @@ const App = () => {
     if (activeTab === 'todos') typeMatch = true;
     else if (activeTab === 'oportunidades') typeMatch = chat.type === 'Oportunidad';
     else if (activeTab === 'consultas') typeMatch = chat.type === 'Consulta';
-    else if (activeTab === 'basura') typeMatch = chat.type === 'Basura';
+    else if (activeTab === 'comunes') typeMatch = chat.type === 'Común';
 
     let dateMatch = true;
     const today = getTodayDate();
@@ -1310,7 +1310,7 @@ const App = () => {
                       <div className="w-px h-4 bg-gray-500/20 mx-1"></div>
                       <FilterIconButton active={activeTab === 'oportunidades'} onClick={() => setActiveTab('oportunidades')} icon={<Star size={16} />} title="Oportunidades" color="text-gold" isDark={isDarkMode} />
                       <FilterIconButton active={activeTab === 'consultas'} onClick={() => setActiveTab('consultas')} icon={<ShoppingBag size={16} />} title="Intención" color="text-blue-500" isDark={isDarkMode} />
-                      <FilterIconButton active={activeTab === 'basura'} onClick={() => setActiveTab('basura')} icon={<Trash2 size={16} />} title="Papelera" color="text-gray-500" isDark={isDarkMode} />
+                      <FilterIconButton active={activeTab === 'comunes'} onClick={() => setActiveTab('comunes')} icon={<Coins size={16} />} title="Comunes" color="text-gray-500" isDark={isDarkMode} />
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 custom-scrollbar">
