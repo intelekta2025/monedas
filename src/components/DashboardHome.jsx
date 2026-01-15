@@ -157,7 +157,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                     </div>
                   </div>
                   <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.active}</div>
-                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Activas</div>
+                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Pendientes</div>
                   <div className={`w-full h-1 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full mt-3 overflow-hidden`}>
                     <div className="h-full bg-blue-500 w-3/4"></div>
                   </div>
@@ -172,7 +172,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                     <span className={`text-xs ${theme.textMuted}`}>Hoy</span>
                   </div>
                   <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.closed}</div>
-                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Cerradas</div>
+                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Resueltas</div>
                 </div>
 
               </div>

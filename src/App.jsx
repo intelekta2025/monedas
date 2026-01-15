@@ -1065,7 +1065,7 @@ const App = () => {
       const convs = await getClosedConversations(selectedPhone.id);
       await enrichAndSetConversations(convs);
       setSelectedChat(null);
-      // Opcional: cambiar a vista de abiertas
+      // Opcional: cambiar a vista de pendientes
       setShowClosedConversations(false);
     } catch (err) {
       console.error('Error reabriendo conversación:', err);
@@ -1395,16 +1395,16 @@ const App = () => {
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} overflow-hidden relative transition-colors duration-300
               `}>
                   <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
-                    <h2 className={`font-bold text-sm ${theme.text} flex items-center gap-2`}><MessageCircle size={18} className={theme.accent} /> Mensajes</h2>
+                    <div></div>
                     <div className="flex items-center gap-2">
                       {/* Toggle para ver conversaciones cerradas */}
                       <button
                         onClick={() => setShowClosedConversations(!showClosedConversations)}
                         className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${showClosedConversations ? 'bg-gray-500 text-white' : `${theme.textMuted} hover:bg-slate-800/50`}`}
-                        title={showClosedConversations ? 'Ver abiertas' : 'Ver cerradas'}
+                        title={showClosedConversations ? 'Ver pendientes' : 'Ver resueltas'}
                       >
                         <Archive size={12} />
-                        <span className="hidden sm:inline">{showClosedConversations ? 'Cerradas' : 'Abiertas'}</span>
+                        <span className="hidden sm:inline">{showClosedConversations ? 'Resueltas' : 'Pendientes'}</span>
                       </button>
                       <button onClick={cycleDateFilter} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${dateFilter !== 'any' ? 'bg-gold text-white shadow-lg shadow-gold/20' : `${theme.textMuted} hover:bg-slate-800/50`}`}><Calendar size={12} /><span className={`${isMobileView ? 'hidden' : 'hidden sm:inline'}`}>{dateFilter === 'today' ? 'Hoy' : dateFilter === 'week' ? '7 Días' : 'Fecha'}</span></button>
                       <div className={`text-[10px] font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-gray-100 text-gray-500'}`}>{filteredChats.length}</div>
@@ -1507,7 +1507,7 @@ const App = () => {
                             <button
                               onClick={() => handleCloseConversation('resolved')}
                               className={`p-2 rounded-lg transition-colors text-red-400 hover:bg-red-500/10`}
-                              title="Cerrar conversación"
+                              title="Marcar como resuelta"
                             >
                               <XCircle size={18} />
                             </button>
@@ -1958,14 +1958,14 @@ const ReplyEditor = ({ chat, chatMessages, theme, isDarkMode, selectedPhone, set
           className={`w-full p-3 lg:p-4 bg-transparent border-none outline-none text-sm resize-none font-medium leading-relaxed overflow-y-auto custom-scrollbar h-40 lg:h-64 ${theme.text} ${chat?.status === 'closed' ? 'opacity-50 cursor-not-allowed' : ''}`}
           value={responseBody}
           onChange={(e) => setResponseBody(e.target.value)}
-          placeholder={chat?.status === 'closed' ? "Conversación cerrada" : "Escribe tu respuesta aquí..."}
+          placeholder={chat?.status === 'closed' ? "Conversación resuelta" : "Escribe tu respuesta aquí..."}
           disabled={isSending || chat?.status === 'closed'}
         />
         <div className={`p-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-gray-200'} bg-opacity-50 flex justify-between items-center`}>
           {chat?.status === 'closed' ? (
             <div className="flex items-center gap-2 text-red-500 font-bold text-[10px] uppercase ml-2 animate-pulse">
               <AlertCircle size={14} />
-              <span>Esta conversación está cerrada. Reábrela para responder.</span>
+              <span>Esta conversación está resuelta. Reábrela para responder.</span>
             </div>
           ) : <div></div>}
           <button
