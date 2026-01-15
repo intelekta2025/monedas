@@ -1,35 +1,47 @@
 import { supabase } from './supabase';
-import { createClient } from '@supabase/supabase-js';
 
 /**
  * Servicio para gestión de usuarios del sistema
  * Usa Supabase Admin API para crear usuarios con auto-confirm
  */
 
-// Obtener Service Role Key del .env
-const getServiceRoleKey = () => {
-    const key = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-    if (!key) {
-        throw new Error('VITE_SUPABASE_SERVICE_ROLE_KEY no está configurado en .env');
+// URL del webhook de n8n para gestión de usuarios
+const N8N_USER_ADMIN_WEBHOOK = import.meta.env.VITE_N8N_USER_ADMIN_WEBHOOK || 'https://n8n-t.intelekta.ai/webhook/user-admin';
+
+/**
+ * Función auxiliar para llamar al webhook de n8n
+ */
+const callUserAdminWebhook = async (action, payload) => {
+    if (!N8N_USER_ADMIN_WEBHOOK) {
+        throw new Error('Webhook de n8n para usuarios no configurado.');
     }
-    return key;
-};
 
-// Crear cliente admin de Supabase
-const getAdminClient = () => {
-    const supabaseUrl = 'https://xuylkjkgfztfelsseyvh.supabase.co';
-    const serviceRoleKey = getServiceRoleKey();
-
-    return createClient(supabaseUrl, serviceRoleKey, {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
+    const response = await fetch(N8N_USER_ADMIN_WEBHOOK, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            action,
+            ...payload
+        })
     });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error en la acción ${action}: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+        return await response.json();
+    } else {
+        return { status: 'ok', text: await response.text() };
+    }
 };
 
 /**
- * Crear un nuevo usuario con auto-confirm
+ * Crear un nuevo usuario con auto-confirm via n8n
  * @param {string} email - Email del usuario
  * @param {string} password - Contraseña del usuario
  * @param {string} fullName - Nombre completo
@@ -38,51 +50,19 @@ const getAdminClient = () => {
  */
 export const createUser = async (email, password, fullName, role = 'operator') => {
     try {
-        const adminClient = getAdminClient();
-
-        // 1. Crear usuario en auth.users con auto-confirm
-        const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+        console.log('Iniciando creación de usuario via n8n...', { email, fullName, role });
+        // Usar full_name en el payload para coincidir con la base de datos
+        const result = await callUserAdminWebhook('create', {
             email,
             password,
-            email_confirm: true, // Auto-confirm, no envía email
-            user_metadata: {
-                full_name: fullName
-            }
+            full_name: fullName,
+            role
         });
 
-        if (authError) {
-            console.error('Error creando usuario en auth:', authError);
-            throw authError;
-        }
-
-        const userId = authData.user.id;
-
-        // 2. Insertar registro en tabla profiles
-        // USAR adminClient para evitar bloqueo RLS
-        const { data: profileData, error: profileError } = await adminClient
-            .from('profiles')
-            .insert([{
-                id: userId,
-                email,
-                full_name: fullName,
-                role,
-                status: 'active'
-            }])
-            .select()
-            .single();
-
-        if (profileError) {
-            console.error('Error creando perfil:', profileError);
-            // Si falla la creación del perfil, eliminar el usuario de auth
-            await adminClient.auth.admin.deleteUser(userId);
-            throw profileError;
-        }
-
-        console.log('Usuario creado exitosamente:', profileData);
-        return profileData;
-
+        console.log('Respuesta de n8n recibida:', result);
+        return result.data || result;
     } catch (error) {
-        console.error('Error en createUser:', error);
+        console.error('Error detallado en createUser:', error);
         throw error;
     }
 };
@@ -93,9 +73,9 @@ export const createUser = async (email, password, fullName, role = 'operator') =
  */
 export const getUsers = async () => {
     try {
-        const adminClient = getAdminClient();
-        // Usar adminClient para ver todos los usuarios sin restricciones RLS
-        const { data, error } = await adminClient
+        // Usar el cliente estándar. 
+        // IMPORTANTE: Asegúrate de que existan políticas RLS para que solo admins vean esto
+        const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .order('created_at', { ascending: false });
@@ -109,23 +89,18 @@ export const getUsers = async () => {
 };
 
 /**
- * Actualizar datos de un usuario
+ * Actualizar datos de un usuario via n8n
  * @param {string} userId - ID del usuario
  * @param {object} updates - Datos a actualizar
  * @returns {Promise<object>} Usuario actualizado
  */
 export const updateUser = async (userId, updates) => {
     try {
-        const adminClient = getAdminClient();
-        const { data, error } = await adminClient
-            .from('profiles')
-            .update(updates)
-            .eq('id', userId)
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
+        const result = await callUserAdminWebhook('update', {
+            id: userId,
+            ...updates
+        });
+        return result.data || result;
     } catch (error) {
         console.error('Error actualizando usuario:', error);
         throw error;
@@ -133,20 +108,13 @@ export const updateUser = async (userId, updates) => {
 };
 
 /**
- * Eliminar un usuario
- * El constraint ON DELETE CASCADE eliminará automáticamente el perfil
+ * Eliminar un usuario via n8n
  * @param {string} userId - ID del usuario a eliminar
  */
 export const deleteUser = async (userId) => {
     try {
-        const adminClient = getAdminClient();
-
-        // Eliminar usuario de auth.users
-        // El CASCADE eliminará automáticamente el registro en profiles
-        const { error } = await adminClient.auth.admin.deleteUser(userId);
-
-        if (error) throw error;
-        console.log('Usuario eliminado exitosamente');
+        await callUserAdminWebhook('delete', { userId });
+        console.log('Usuario eliminado exitosamente via n8n');
     } catch (error) {
         console.error('Error eliminando usuario:', error);
         throw error;
