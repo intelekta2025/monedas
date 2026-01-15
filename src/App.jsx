@@ -1405,9 +1405,9 @@ const App = () => {
                       >
                         <Archive size={12} />
                         <span className="hidden sm:inline">{showClosedConversations ? 'Resueltas' : 'Pendientes'}</span>
+                        <span className={`ml-1 px-1.5 py-0.5 rounded-full ${showClosedConversations ? 'bg-white/20' : 'bg-gold/20 text-gold'}`}>{filteredChats.length}</span>
                       </button>
                       <button onClick={cycleDateFilter} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${dateFilter !== 'any' ? 'bg-gold text-white shadow-lg shadow-gold/20' : `${theme.textMuted} hover:bg-slate-800/50`}`}><Calendar size={12} /><span className={`${isMobileView ? 'hidden' : 'hidden sm:inline'}`}>{dateFilter === 'today' ? 'Hoy' : dateFilter === 'week' ? '7 Días' : 'Fecha'}</span></button>
-                      <div className={`text-[10px] font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-gray-100 text-gray-500'}`}>{filteredChats.length}</div>
                     </div>
                   </div>
                   <div className="p-3">
