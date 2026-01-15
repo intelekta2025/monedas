@@ -91,6 +91,11 @@ const SettingsView = ({ onBack, isDarkMode }) => {
     };
 
     useEffect(() => {
+        loadWhatsappPhones();
+        loadUsers();
+    }, []);
+
+    useEffect(() => {
         if (activeSection === 'whatsapp') {
             loadWhatsappPhones();
         } else if (activeSection === 'users') {

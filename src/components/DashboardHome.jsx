@@ -7,7 +7,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
     uniqueClients: 854,
     conversations: 1248,
     opportunities: 42,
-    intention: 70,
+    intention: 20,
     trash: 31,
     unattended: 12,
     active: 45,
@@ -102,14 +102,14 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
               <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>INTENCIÓN</h3>
               <Target size={14} className="text-green-500" />
             </div>
-            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.intention}%</div>
+            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.intention}</div>
             <div className={`text-xs ${theme.textMuted}`}>Conversión positiva</div>
           </div>
 
           {/* KPI 5 - Basura */}
           <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-red-500 transition-colors group`}>
             <div className="flex justify-between items-start mb-4">
-              <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>BASURA</h3>
+              <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>COMÚN</h3>
               <Trash2 size={14} className="text-red-500" />
             </div>
             <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.trash}</div>
@@ -316,7 +316,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                 <div>
                   <div className={`flex justify-between text-xs mb-1.5 ${theme.text}`}>
                     <span className="flex items-center gap-2 font-semibold">
-                      <div className="w-2.5 h-2.5 rounded-full bg-gray-500"></div> Basura
+                      <div className="w-2.5 h-2.5 rounded-full bg-gray-500"></div> Común
                     </span>
                     <span className={`font-mono ${theme.textWhite}`}>31 (15%)</span>
                   </div>
