@@ -1394,8 +1394,7 @@ const App = () => {
                 ${isMobileView ? 'w-full' : 'w-[320px]'} flex-col flex-shrink-0
                 ${theme.cardBg} ${!isMobileView && `rounded-2xl border ${theme.cardBorder} shadow-xl`} overflow-hidden relative transition-colors duration-300
               `}>
-                  <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
-                    <div></div>
+                  <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-center gap-4`}>
                     <div className="flex items-center gap-2">
                       {/* Toggle para ver conversaciones cerradas */}
                       <button
