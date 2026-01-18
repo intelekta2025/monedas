@@ -1,17 +1,18 @@
 import React from 'react';
-import { Inbox, Star, Trash2, Users, MessageCircle, Bell, Check, Target, Filter } from 'lucide-react';
+import { LayoutGrid, Users, MessageCircle, Star, Target, Trash2, ArrowUpRight, ArrowDownRight, Filter, Search, MoreVertical, Bell, CheckCircle2, Clock, AlertCircle, ChevronRight, Radar, MessageSquare, Inbox, Check } from 'lucide-react';
 
 const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = true, stats = {} }) => {
   // Default stats if not provided
   const defaultStats = {
-    uniqueClients: 854,
-    conversations: 1248,
-    opportunities: 42,
-    intention: 20,
-    trash: 31,
+    uniqueClients: 40,
+    conversations: { pending: 600, resolved: 300 },
+    opportunities: { pending: 10, resolved: 5 },
+    intention: { pending: 20, resolved: 10 },
+    trash: { pending: 30, resolved: 10 },
+    unattended: 12,
     unattended: 12,
     active: 45,
-    closed: 1191
+    closed: 100
   };
 
   const dashStats = { ...defaultStats, ...stats };
@@ -51,38 +52,35 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
         {/* Header Section */}
         <div className={`flex justify-between items-end mb-8 border-b ${theme.border} pb-4`}>
           <div>
-            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} mb-1`}>Centro de Comando</h2>
-            <p className={`text-sm ${theme.textMuted}`}>Resumen de operaciones en tiempo real</p>
+            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} mb-1`}>Boveda de inteligencia</h2>
           </div>
           <div className="flex gap-2">
-            <span className={`text-xs ${isDarkMode ? 'bg-github-border text-github-text' : 'bg-gray-200 text-gray-700'} px-3 py-1 rounded-full flex items-center gap-2`}>
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Sistema Operativo
-            </span>
+            <p className={`text-lg font-medium ${theme.textMuted}`}>Operaciones del mes ( Ene 2026 )</p>
           </div>
         </div>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           {/* KPI 1 - Clientes Únicos */}
-          <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-purple-500 transition-colors group`}>
+          <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-amber-500 transition-colors group`}>
             <div className="flex justify-between items-start mb-4">
               <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>Clientes Únicos</h3>
+              <Users size={14} className="text-amber-500" />
             </div>
             <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.uniqueClients}</div>
-            <div className={`text-xs ${theme.textMuted} flex items-center gap-1`}>
-              <Users size={12} /> Base de datos
-            </div>
           </div>
 
           {/* KPI 2 - Conversaciones */}
           <div className={`${theme.card} border ${theme.border} p-5 rounded-lg shadow-sm hover:border-blue-500 transition-colors group`}>
             <div className="flex justify-between items-start mb-4">
               <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>Conversaciones</h3>
-              <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full border border-green-900/50">+12%</span>
+              <MessageSquare size={14} className="text-blue-500" />
             </div>
-            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.conversations}</div>
+            <div className={`text-3xl font-bold ${theme.textWhite} mb-1 flex items-baseline gap-2`}>
+              <span className="text-red-400">{dashStats.conversations.pending}</span> <span className="text-green-400">/ {dashStats.conversations.resolved}</span>
+            </div>
             <div className={`text-xs ${theme.textMuted} flex items-center gap-1`}>
-              <MessageCircle size={12} /> Activas este mes
+              <MessageCircle size={12} /> Pendientes / Resueltas
             </div>
           </div>
 
@@ -92,8 +90,10 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
               <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>Oportunidades</h3>
               <Star size={14} className="text-yellow-500" />
             </div>
-            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.opportunities}</div>
-            <div className={`text-xs ${theme.textMuted}`}>Alta intención</div>
+            <div className={`text-3xl font-bold ${theme.textWhite} mb-1 flex items-baseline gap-2`}>
+              <span className="text-red-400">{dashStats.opportunities.pending}</span> <span className="text-green-400">/ {dashStats.opportunities.resolved}</span>
+            </div>
+            <div className={`text-xs ${theme.textMuted}`}>Pendientes / Resueltas</div>
           </div>
 
           {/* KPI 4 - Intención */}
@@ -102,8 +102,10 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
               <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>INTENCIÓN</h3>
               <Target size={14} className="text-green-500" />
             </div>
-            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.intention}</div>
-            <div className={`text-xs ${theme.textMuted}`}>Conversión positiva</div>
+            <div className={`text-3xl font-bold ${theme.textWhite} mb-1 flex items-baseline gap-2`}>
+              <span className="text-red-400">{dashStats.intention.pending}</span> <span className="text-green-400">/ {dashStats.intention.resolved}</span>
+            </div>
+            <div className={`text-xs ${theme.textMuted}`}>Pendientes / Resueltas</div>
           </div>
 
           {/* KPI 5 - Basura */}
@@ -112,8 +114,10 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
               <h3 className={`text-xs font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} uppercase`}>COMÚN</h3>
               <Trash2 size={14} className="text-red-500" />
             </div>
-            <div className={`text-3xl font-bold ${theme.textWhite} mb-1`}>{dashStats.trash}</div>
-            <div className={`text-xs ${theme.textMuted}`}>Filtrados auto.</div>
+            <div className={`text-3xl font-bold ${theme.textWhite} mb-1 flex items-baseline gap-2`}>
+              <span className="text-red-400">{dashStats.trash.pending}</span> <span className="text-green-400">/ {dashStats.trash.resolved}</span>
+            </div>
+            <div className={`text-xs ${theme.textMuted}`}>Pendientes / Resueltas</div>
           </div>
         </div>
 
@@ -129,9 +133,6 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                 <h3 className={`font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} text-sm flex items-center gap-2`}>
                   <Inbox size={16} className={isDarkMode ? 'text-gold' : 'text-gold-dark'} /> ESTADO DE BANDEJA
                 </h3>
-                <span className={`text-xs ${theme.textMuted} flex items-center gap-1`}>
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> En vivo
-                </span>
               </div>
 
               {/* Grid Horizontal para Bandeja */}
@@ -146,7 +147,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                     <span className="text-xs text-red-400 font-bold bg-red-900/20 px-2 py-0.5 rounded border border-red-900/30">URGENTE</span>
                   </div>
                   <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.unattended}</div>
-                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Sin Atender</div>
+                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Pendientes Oportunidad</div>
                 </div>
 
                 {/* Card Activas */}
@@ -157,10 +158,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                     </div>
                   </div>
                   <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.active}</div>
-                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Pendientes</div>
-                  <div className={`w-full h-1 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full mt-3 overflow-hidden`}>
-                    <div className="h-full bg-blue-500 w-3/4"></div>
-                  </div>
+                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Pendientes Común</div>
                 </div>
 
                 {/* Card Cerradas */}
@@ -172,32 +170,86 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                     <span className={`text-xs ${theme.textMuted}`}>Hoy</span>
                   </div>
                   <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.closed}</div>
-                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Resueltas</div>
+                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Pendientes Intención</div>
                 </div>
 
               </div>
             </div>
 
-            {/* 2. TOP CLIENTES ACTIVOS */}
+            {/* 2. RADAR DE OPORTUNIDADES (Wishlist) */}
+            <div className={`${theme.card} border ${theme.border} rounded-lg overflow-hidden flex flex-col shadow-sm relative`}>
+              <div className={`p-5 border-b ${theme.border} flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50' : 'bg-gray-50'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-amber-500/10' : 'bg-amber-100'}`}>
+                    <Radar className="text-amber-500 w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} text-sm`}>Radar de oportunidades (wishlist)</h3>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className={`absolute left-2.5 top-1.5 w-3.5 h-3.5 ${theme.textMuted}`} />
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      className={`text-xs pl-8 pr-3 py-1.5 rounded-full border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300 placeholder-slate-500 focus:border-amber-500' : 'bg-white border-gray-200 text-gray-700 focus:border-amber-400'} outline-none transition-all w-32 focus:w-48`}
+                    />
+                  </div>
+                  <button className={`text-xs ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-200'} px-3 py-1 rounded-full border transition`}>
+                    Ver todo
+                  </button>
+                </div>
+              </div>
+
+              <div className={`divide-y ${theme.border}`}>
+                <MatchItem
+                  client="Dr. Roberto Méndez"
+                  type="VIP Oro"
+                  lookingFor="Onza Libertad 1998 (Plata)"
+                  time="Hace 20 min"
+                  probability="Alta"
+                  isDarkMode={isDarkMode}
+                />
+                <MatchItem
+                  client="Coleccionista Anónimo"
+                  type="Recurrente"
+                  lookingFor="Centenario 50 Pesos"
+                  time="Hace 2 horas"
+                  probability="Media"
+                  isDarkMode={isDarkMode}
+                />
+                <MatchItem
+                  client="Lucía G."
+                  type="Nuevo"
+                  lookingFor="8 Reales Ceca Mo"
+                  time="Hace 4 horas"
+                  probability="Baja"
+                  isDarkMode={isDarkMode}
+                />
+              </div>
+            </div>
+
+            {/* 3. TOP CLIENTES ACTIVOS (Restored) */}
             <div className={`${theme.card} border ${theme.border} rounded-lg overflow-hidden flex flex-col`}>
-              <div className={`p-4 border-b ${theme.border} flex justify-between items-center ${isDarkMode ? 'bg-github-card/50' : 'bg-gray-50'}`}>
+              <div className={`p-4 border-b ${theme.border} flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50' : 'bg-gray-50'}`}>
                 <h3 className={`font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} text-sm`}>Top Clientes Activos</h3>
-                <button className={`text-xs ${isDarkMode ? 'text-github-accent' : 'text-blue-500'} hover:underline`}>Ver todos</button>
+                <button className={`text-xs ${isDarkMode ? 'text-blue-400' : 'text-blue-600'} hover:underline`}>Ver todos</button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className={`border-b ${theme.border} ${theme.textMuted} ${isDarkMode ? 'bg-github-bg/50' : 'bg-gray-50'} text-xs uppercase`}>
+                    <tr className={`border-b ${theme.border} ${theme.textMuted} ${isDarkMode ? 'bg-slate-900/50' : 'bg-gray-50'} text-xs uppercase`}>
                       <th className="px-4 py-3 font-semibold">Cliente</th>
                       <th className="px-4 py-3 font-semibold">Actividad</th>
                       <th className="px-4 py-3 font-semibold text-right">Último contacto</th>
                     </tr>
                   </thead>
                   <tbody className={`divide-y ${theme.border}`}>
-                    <tr className={`${isDarkMode ? 'hover:bg-github-border/20' : 'hover:bg-gray-50'} transition-colors`}>
+                    <tr className={`${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'} transition-colors`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} flex items-center justify-center font-bold ${theme.textWhite} text-xs`}>CR</div>
+                          <div className={`w-8 h-8 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-gray-200'} flex items-center justify-center font-bold ${theme.textWhite} text-xs`}>CR</div>
                           <div>
                             <div className={`font-bold ${theme.textWhite}`}>Carlos Ruiz</div>
                             <div className={`text-[10px] ${theme.textMuted} uppercase font-bold`}>VIP</div>
@@ -205,17 +257,17 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className={`w-full max-w-[150px] h-1.5 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                        <div className={`w-full max-w-[150px] h-1.5 ${isDarkMode ? 'bg-slate-800' : 'bg-gray-200'} rounded-full overflow-hidden`}>
                           <div className="h-full bg-blue-500 w-[80%]"></div>
                         </div>
                         <div className={`text-[10px] ${theme.textMuted} mt-1`}>12 convs.</div>
                       </td>
                       <td className={`px-4 py-3 text-right font-mono text-xs ${theme.textMuted}`}>Hace 2h</td>
                     </tr>
-                    <tr className={`${isDarkMode ? 'hover:bg-github-border/20' : 'hover:bg-gray-50'} transition-colors`}>
+                    <tr className={`${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'} transition-colors`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} flex items-center justify-center font-bold ${theme.textWhite} text-xs`}>MG</div>
+                          <div className={`w-8 h-8 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-gray-200'} flex items-center justify-center font-bold ${theme.textWhite} text-xs`}>MG</div>
                           <div>
                             <div className={`font-bold ${theme.textWhite}`}>Maria G.</div>
                             <div className={`text-[10px] ${theme.textMuted} uppercase font-bold`}>Recurrente</div>
@@ -223,17 +275,17 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className={`w-full max-w-[150px] h-1.5 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                        <div className={`w-full max-w-[150px] h-1.5 ${isDarkMode ? 'bg-slate-800' : 'bg-gray-200'} rounded-full overflow-hidden`}>
                           <div className="h-full bg-blue-500 w-[50%]"></div>
                         </div>
                         <div className={`text-[10px] ${theme.textMuted} mt-1`}>8 convs.</div>
                       </td>
                       <td className={`px-4 py-3 text-right font-mono text-xs ${theme.textMuted}`}>Hace 5h</td>
                     </tr>
-                    <tr className={`${isDarkMode ? 'hover:bg-github-border/20' : 'hover:bg-gray-50'} transition-colors`}>
+                    <tr className={`${isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'} transition-colors`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} flex items-center justify-center font-bold ${theme.textWhite} text-xs`}>AL</div>
+                          <div className={`w-8 h-8 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-gray-200'} flex items-center justify-center font-bold ${theme.textWhite} text-xs`}>AL</div>
                           <div>
                             <div className={`font-bold ${theme.textWhite}`}>Ana Lopez</div>
                             <div className={`text-[10px] ${theme.textMuted} uppercase font-bold`}>Nuevo</div>
@@ -241,7 +293,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className={`w-full max-w-[150px] h-1.5 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                        <div className={`w-full max-w-[150px] h-1.5 ${isDarkMode ? 'bg-slate-800' : 'bg-gray-200'} rounded-full overflow-hidden`}>
                           <div className="h-full bg-blue-500 w-[30%]"></div>
                         </div>
                         <div className={`text-[10px] ${theme.textMuted} mt-1`}>4 convs.</div>
@@ -336,3 +388,70 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
 };
 
 export default DashboardHome;
+
+const MatchItem = ({ client, type, lookingFor, time, probability, isDarkMode }) => {
+  const [status, setStatus] = React.useState('idle');
+
+  const handleContact = (e) => {
+    e.stopPropagation();
+    setStatus('sending');
+    setTimeout(() => setStatus('sent'), 1500);
+  };
+
+  const themeItem = {
+    hoverBg: isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50',
+    titleColor: isDarkMode ? 'text-white' : 'text-gray-900',
+    subtitleColor: isDarkMode ? 'text-slate-300' : 'text-gray-600',
+    matchColor: isDarkMode ? 'text-emerald-400' : 'text-emerald-600',
+    timeColor: isDarkMode ? 'text-slate-500' : 'text-gray-400',
+    avatarBg: isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200',
+    typeBadge: type === 'VIP Oro'
+      ? (isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-100 text-amber-800 border-amber-200')
+      : (isDarkMode ? 'bg-slate-700 text-slate-400 border-slate-600' : 'bg-gray-200 text-gray-600 border-gray-300')
+  };
+
+  return (
+    <div className={`p-4 ${themeItem.hoverBg} transition-colors group cursor-pointer border-l-2 border-transparent hover:border-amber-500/50`}>
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex gap-4">
+          <div className="mt-1">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center border font-bold text-amber-500 ${themeItem.avatarBg}`}>
+              {client.charAt(0)}
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className={`font-semibold ${themeItem.titleColor}`}>{client}</h4>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border ${themeItem.typeBadge}`}>
+                {type}
+              </span>
+            </div>
+            <p className={`text-sm mt-1 ${themeItem.subtitleColor}`}>Busca: <span className={isDarkMode ? "text-amber-200" : "text-amber-700"}>{lookingFor}</span></p>
+          </div>
+        </div>
+        <div className="text-right w-full sm:w-auto flex flex-row sm:flex-col justify-between items-center sm:items-end">
+          <span className={`text-xs flex items-center gap-1 ${themeItem.timeColor}`}>
+            <Clock size={12} /> {time}
+          </span>
+
+          <button
+            onClick={handleContact}
+            disabled={status !== 'idle'}
+            className={`mt-0 sm:mt-3 text-xs px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1 shadow-sm
+              ${status === 'idle'
+                ? 'bg-amber-500 hover:bg-amber-400 text-slate-900 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 translate-y-0'
+                : status === 'sending'
+                  ? 'bg-slate-700 text-slate-300 cursor-wait opacity-100'
+                  : 'bg-emerald-600 text-white cursor-default opacity-100'
+              }
+            `}
+          >
+            {status === 'idle' && <>Contactar <ChevronRight size={12} /></>}
+            {status === 'sending' && <>Enviando...</>}
+            {status === 'sent' && <>Enviado <CheckCircle2 size={12} /></>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import SettingsView from './components/SettingsView';
 import DashboardHome from './components/DashboardHome';
+import Dashboard2 from './components/Dashboard2';
+
 import { getWhatsappPhones } from './services/whatsappService';
 import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToAllMessagesByPhone, subscribeToAllMediaUpdates, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
 import { supabase } from './services/supabase';
@@ -47,7 +49,8 @@ import {
   XCircle,
 
   Archive,
-  RefreshCw
+  RefreshCw,
+  Gem
 } from 'lucide-react';
 
 const LoginScreen = ({ isDarkMode, toggleTheme }) => {
@@ -1307,7 +1310,7 @@ const App = () => {
                         </>
                       ) : (
                         <>
-                          <LayoutGrid size={16} /> <span className="hidden xl:inline">Dashboard</span>
+                          <Gem size={16} /> <span className="hidden xl:inline">Bóveda de Inteligencia</span>
                         </>
                       )}
                     </button>
@@ -1346,6 +1349,14 @@ const App = () => {
                       {currentView === 'dashboard' ? <ArrowLeft size={20} /> : <LayoutGrid size={20} />}
                     </button>
                     <button
+                      onClick={() => setCurrentView('dashboard2')}
+                      className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
+                      title="Dashboard 2"
+                    >
+                      <Gem size={20} />
+                    </button>
+
+                    <button
                       onClick={() => setCurrentView('settings')}
                       className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
                       title="Configuración"
@@ -1370,20 +1381,32 @@ const App = () => {
                 onBack={() => setCurrentView('main')}
                 isDarkMode={isDarkMode}
               />
+            ) : currentView === 'dashboard2' ? (
+              <div className="flex-1 h-screen overflow-hidden">
+                <Dashboard2 />
+                {/* Botón flotante para regresar, ya que Dashboard2 ocupa toda la pantalla */}
+                <button
+                  onClick={() => setCurrentView('main')}
+                  className="fixed bottom-4 right-4 z-50 p-3 bg-slate-900 border border-slate-700 text-slate-300 rounded-full shadow-lg hover:bg-slate-800 transition-all"
+                  title="Volver a la App"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              </div>
             ) : currentView === 'dashboard' ? (
               <DashboardHome
                 navigateToWorkspace={() => setCurrentView('main')}
                 navigateToClients={() => setCurrentView('clients')}
                 isDarkMode={isDarkMode}
-                stats={{
-                  uniqueClients: conversations.length,
-                  conversations: conversations.length,
-                  opportunities: conversations.filter(c => c.classification === 'opportunity').length,
-                  trash: conversations.filter(c => c.classification === 'trash').length,
-                  unattended: conversations.filter(c => c.unread_count > 0).length,
-                  active: conversations.filter(c => c.status === 'open').length,
-                  closed: 0
-                }}
+              /* stats={{
+                uniqueClients: conversations.length,
+                conversations: conversations.length,
+                opportunities: conversations.filter(c => c.classification === 'opportunity').length,
+                trash: conversations.filter(c => c.classification === 'trash').length,
+                unattended: conversations.filter(c => c.unread_count > 0).length,
+                active: conversations.filter(c => c.status === 'open').length,
+                closed: 0
+              }} */
               />
             ) : (
               <main className={`flex-1 flex overflow-hidden ${isMobileView ? 'p-0' : 'p-4 lg:p-6 lg:gap-6'} relative`}>
