@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutGrid, Users, MessageCircle, Star, Target, Trash2, ArrowUpRight, ArrowDownRight, Filter, Search, MoreVertical, Bell, CheckCircle2, Clock, AlertCircle, ChevronRight, Radar, MessageSquare, Inbox, Check } from 'lucide-react';
+import { LayoutGrid, Users, MessageCircle, Star, Target, Trash2, ArrowUpRight, ArrowDownRight, Filter, Search, MoreVertical, Bell, CheckCircle2, Clock, AlertCircle, ChevronRight, Radar, MessageSquare, Inbox, Check, Zap, AlertTriangle, Flame, Snowflake } from 'lucide-react';
 
 const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = true, stats = {} }) => {
   // Default stats if not provided
@@ -124,57 +124,135 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
         {/* Content Grid Principal */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* COLUMNA IZQUIERDA (Ancha) */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
+          {/* COLUMNA IZQUIERDA (Estrecha - Monitor y Feedback) */}
+          <div className="lg:col-span-1 flex flex-col gap-6">
 
-            {/* 1. ESTADO DE BANDEJA */}
+            {/* 1. MONITOR DE SALUD OPERATIVA */}
             <div className={`${theme.card} border ${theme.border} rounded-lg p-6 shadow-sm relative overflow-hidden`}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className={`font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} text-sm flex items-center gap-2`}>
-                  <Inbox size={16} className={isDarkMode ? 'text-gold' : 'text-gold-dark'} /> ESTADO DE BANDEJA
+                  <Inbox size={16} className={isDarkMode ? 'text-gold' : 'text-gold-dark'} /> Monitor de Salud Operativa
                 </h3>
               </div>
 
-              {/* Grid Horizontal para Bandeja */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Grid Vertical para Monitor */}
+              <div className="grid grid-cols-1 gap-4">
 
-                {/* Card Sin Atender */}
-                <div className={`p-4 rounded-lg ${theme.bgSecondary} border ${theme.border} hover:border-red-500/50 transition-all cursor-pointer group`}>
+                {/* Card Velocidad de Resolución */}
+                <div className={`p-4 rounded-lg ${theme.bgSecondary} border ${theme.border} hover:border-amber-500/50 transition-all cursor-pointer group`}>
                   <div className="flex items-center justify-between mb-2">
-                    <div className="w-10 h-10 rounded-full bg-red-900/20 flex items-center justify-center text-red-400 group-hover:bg-red-900/30 transition">
-                      <Bell size={18} />
+                    <div className="w-10 h-10 rounded-full bg-amber-900/20 flex items-center justify-center text-amber-500 group-hover:bg-amber-900/30 transition">
+                      <Zap size={18} />
                     </div>
-                    <span className="text-xs text-red-400 font-bold bg-red-900/20 px-2 py-0.5 rounded border border-red-900/30">URGENTE</span>
+                    <span className="text-xs text-amber-500 font-bold bg-amber-900/20 px-2 py-0.5 rounded border border-amber-900/30">4 hrs</span>
                   </div>
-                  <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.unattended}</div>
-                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Pendientes Oportunidad</div>
+                  <div className={`text-2xl font-bold ${theme.textWhite}`}>100</div>
+                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Velocidad de Resolución</div>
                 </div>
 
-                {/* Card Activas */}
-                <div className={`p-4 rounded-lg ${theme.bgSecondary} border ${theme.border} hover:border-blue-500/50 transition-all cursor-pointer group`}>
+                {/* Card Tiempo de espera */}
+                <div className={`p-4 rounded-lg ${theme.bgSecondary} border ${theme.border} hover:border-orange-500/50 transition-all cursor-pointer group`}>
                   <div className="flex items-center justify-between mb-2">
-                    <div className="w-10 h-10 rounded-full bg-blue-900/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-900/30 transition">
-                      <MessageCircle size={18} />
+                    <div className="w-10 h-10 rounded-full bg-orange-900/20 flex items-center justify-center text-orange-500 group-hover:bg-orange-900/30 transition">
+                      <AlertTriangle size={18} />
                     </div>
                   </div>
-                  <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.active}</div>
-                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Pendientes Común</div>
+                  <div className={`text-2xl font-bold ${theme.textWhite}`}>
+                    5 <span className="text-sm font-normal text-gray-500 ml-1">conversaciones</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-orange-500 font-bold bg-orange-900/20 px-2 py-0.5 rounded border border-orange-900/30">4 hrs</span>
+                    <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Tiempo de espera</div>
+                  </div>
                 </div>
 
-                {/* Card Cerradas */}
-                <div className={`p-4 rounded-lg ${theme.bgSecondary} border ${theme.border} hover:border-green-500/50 transition-all cursor-pointer group`}>
+                {/* Card Termómetro de Leads */}
+                <div className={`p-4 rounded-lg ${theme.bgSecondary} border ${theme.border} hover:border-rose-500/50 transition-all cursor-pointer group`}>
                   <div className="flex items-center justify-between mb-2">
-                    <div className="w-10 h-10 rounded-full bg-green-900/20 flex items-center justify-center text-green-400 group-hover:bg-green-900/30 transition">
-                      <Check size={18} />
+                    <div className="w-10 h-10 rounded-full bg-rose-900/20 flex items-center justify-center text-rose-500 group-hover:bg-rose-900/30 transition">
+                      <Flame size={18} />
                     </div>
-                    <span className={`text-xs ${theme.textMuted}`}>Hoy</span>
+                    <span className="text-xs text-rose-500 font-bold bg-rose-900/20 px-2 py-0.5 rounded border border-rose-900/30">Hot Leads</span>
                   </div>
-                  <div className={`text-2xl font-bold ${theme.textWhite}`}>{dashStats.closed}</div>
-                  <div className={`text-xs ${theme.textMuted} font-bold uppercase tracking-wider`}>Pendientes Intención</div>
+                  <div className={`text-2xl font-bold ${theme.textWhite}`}>15</div>
+
+                  <div className="mt-3 flex items-center gap-3 pt-2 border-t border-gray-700/30">
+                    {/* Cold */}
+                    <div className="flex items-center gap-1.5" title="Cliente frío/cortante">
+                      <Snowflake size={14} className="text-blue-400" />
+                      <span className={`text-xs font-mono font-bold ${theme.textMuted}`}>8</span>
+                    </div>
+
+                    {/* Support/Warning */}
+                    <div className="flex items-center gap-1.5" title="Atención a Soporte">
+                      <AlertTriangle size={14} className="text-amber-500" />
+                      <span className={`text-xs font-mono font-bold ${theme.textMuted}`}>3</span>
+                    </div>
+                  </div>
                 </div>
 
               </div>
             </div>
+
+            {/* Panel Stats IA (FEEDBACK IA) */}
+            <div className={`${theme.card} border ${theme.border} rounded-lg p-6 shadow-sm`}>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className={`font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} text-sm`}>FEEDBACK IA</h3>
+                <span className={`text-[10px] ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} px-2 py-1 rounded ${isDarkMode ? 'text-github-text' : 'text-gray-700'}`}>30 Días</span>
+              </div>
+
+              {/* Donut Chart */}
+              <div className="flex justify-center mb-6">
+                <div className="relative w-[140px] h-[140px]">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    {/* Background circle */}
+                    <circle cx="50" cy="50" r="40" fill="none" stroke={isDarkMode ? '#30363d' : '#e5e7eb'} strokeWidth="12" />
+                    {/* Positive segment (70%) */}
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#238636" strokeWidth="12"
+                      strokeDasharray="175.93 251.33" strokeDashoffset="0" />
+                    {/* Negative segment (30%) - 0.3 * 251.33 = 75.40 */}
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#f85149" strokeWidth="12"
+                      strokeDasharray="75.40 251.33" strokeDashoffset="-175.93" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`text-3xl font-black ${theme.textWhite}`}>70%</span>
+                    <span className={`text-[9px] ${theme.textMuted} uppercase mt-1`}>POSITIVA</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                {/* Positivo */}
+                <div>
+                  <div className={`flex justify-between text-xs mb-1.5 ${theme.text}`}>
+                    <span className="flex items-center gap-2 font-semibold">
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-600"></div> Positivo
+                    </span>
+                    <span className={`font-mono ${theme.textWhite}`}>145 (70%)</span>
+                  </div>
+                  <div className={`w-full h-2 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                    <div className="h-full bg-green-600" style={{ width: '70%' }}></div>
+                  </div>
+                </div>
+                {/* Negativo */}
+                <div>
+                  <div className={`flex justify-between text-xs mb-1.5 ${theme.text}`}>
+                    <span className="flex items-center gap-2 font-semibold">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> Negativo
+                    </span>
+                    <span className={`font-mono ${theme.textWhite}`}>62 (30%)</span>
+                  </div>
+                  <div className={`w-full h-2 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                    <div className="h-full bg-red-500" style={{ width: '30%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* COLUMNA DERECHA (Ancha - Radar y Clientes) */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
 
             {/* 2. RADAR DE OPORTUNIDADES (Wishlist) */}
             <div className={`${theme.card} border ${theme.border} rounded-lg overflow-hidden flex flex-col shadow-sm relative`}>
@@ -230,7 +308,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
               </div>
             </div>
 
-            {/* 3. TOP CLIENTES ACTIVOS (Restored) */}
+            {/* 3. TOP CLIENTES ACTIVOS */}
             <div className={`${theme.card} border ${theme.border} rounded-lg overflow-hidden flex flex-col`}>
               <div className={`p-4 border-b ${theme.border} flex justify-between items-center ${isDarkMode ? 'bg-slate-900/50' : 'bg-gray-50'}`}>
                 <h3 className={`font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} text-sm`}>Top Clientes Activos</h3>
@@ -304,81 +382,6 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
                 </table>
               </div>
             </div>
-          </div>
-
-          {/* COLUMNA DERECHA */}
-          <div className="space-y-6">
-
-            {/* Panel Stats IA */}
-            <div className={`${theme.card} border ${theme.border} rounded-lg p-6 shadow-sm`}>
-              <div className="flex justify-between items-center mb-6">
-                <h3 className={`font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} text-sm`}>FEEDBACK IA</h3>
-                <span className={`text-[10px] ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} px-2 py-1 rounded ${isDarkMode ? 'text-github-text' : 'text-gray-700'}`}>30 Días</span>
-              </div>
-
-              {/* Donut Chart */}
-              <div className="flex justify-center mb-6">
-                <div className="relative w-[140px] h-[140px]">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    {/* Background circle */}
-                    <circle cx="50" cy="50" r="40" fill="none" stroke={isDarkMode ? '#30363d' : '#e5e7eb'} strokeWidth="12" />
-                    {/* Positive segment (70%) */}
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#238636" strokeWidth="12"
-                      strokeDasharray="175.93 251.33" strokeDashoffset="0" />
-                    {/* Negative segment (15%) */}
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#f85149" strokeWidth="12"
-                      strokeDasharray="37.70 251.33" strokeDashoffset="-175.93" />
-                    {/* Trash segment (15%) */}
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#6e7681" strokeWidth="12"
-                      strokeDasharray="37.70 251.33" strokeDashoffset="-213.63" />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className={`text-3xl font-black ${theme.textWhite}`}>70%</span>
-                    <span className={`text-[9px] ${theme.textMuted} uppercase mt-1`}>POSITIVA</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-5">
-                {/* Positivo */}
-                <div>
-                  <div className={`flex justify-between text-xs mb-1.5 ${theme.text}`}>
-                    <span className="flex items-center gap-2 font-semibold">
-                      <div className="w-2.5 h-2.5 rounded-full bg-green-600"></div> Positivo
-                    </span>
-                    <span className={`font-mono ${theme.textWhite}`}>145 (70%)</span>
-                  </div>
-                  <div className={`w-full h-2 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
-                    <div className="h-full bg-green-600" style={{ width: '70%' }}></div>
-                  </div>
-                </div>
-                {/* Negativo */}
-                <div>
-                  <div className={`flex justify-between text-xs mb-1.5 ${theme.text}`}>
-                    <span className="flex items-center gap-2 font-semibold">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> Negativo
-                    </span>
-                    <span className={`font-mono ${theme.textWhite}`}>31 (15%)</span>
-                  </div>
-                  <div className={`w-full h-2 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
-                    <div className="h-full bg-red-500" style={{ width: '15%' }}></div>
-                  </div>
-                </div>
-                {/* Basura */}
-                <div>
-                  <div className={`flex justify-between text-xs mb-1.5 ${theme.text}`}>
-                    <span className="flex items-center gap-2 font-semibold">
-                      <div className="w-2.5 h-2.5 rounded-full bg-gray-500"></div> Común
-                    </span>
-                    <span className={`font-mono ${theme.textWhite}`}>31 (15%)</span>
-                  </div>
-                  <div className={`w-full h-2 ${isDarkMode ? 'bg-github-border' : 'bg-gray-200'} rounded-full overflow-hidden`}>
-                    <div className="h-full bg-gray-500" style={{ width: '15%' }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
 
         </div>
