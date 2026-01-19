@@ -1314,7 +1314,7 @@ const App = () => {
                         </>
                       ) : (
                         <>
-                          <Gem size={16} /> <span className="hidden xl:inline">Bóveda de Inteligencia</span>
+                          <Gem size={16} /> <span className="hidden xl:inline">Radar Operativo</span>
                         </>
                       )}
                     </button>
@@ -1330,7 +1330,7 @@ const App = () => {
                       className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
                       title="Bóveda de Activos"
                     >
-                      <Vault size={16} /> <span className="hidden xl:inline">Bóveda</span>
+                      <Vault size={16} /> <span className="hidden xl:inline">Bóveda de Activos</span>
                     </button>
                     <button onClick={() => setCurrentView('settings')} className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><Settings size={16} /></button>
                     {/* Profile Icon / Initials */}

@@ -52,7 +52,7 @@ const DashboardHome = ({ navigateToWorkspace, navigateToClients, isDarkMode = tr
         {/* Header Section */}
         <div className={`flex justify-between items-end mb-8 border-b ${theme.border} pb-4`}>
           <div>
-            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} mb-1`}>Boveda de inteligencia</h2>
+            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-gold' : 'text-gold-dark'} mb-1`}>Radar Operativo</h2>
           </div>
           <div className="flex gap-2">
             <p className={`text-lg font-medium ${theme.textMuted}`}>Operaciones del mes ( Ene 2026 )</p>
