@@ -4,6 +4,7 @@ import SettingsView from './components/SettingsView';
 import DashboardHome from './components/DashboardHome';
 import Dashboard2 from './components/Dashboard2';
 import AuctionsView from './components/AuctionsView';
+import AssetVault from './components/AssetVault';
 
 import { getWhatsappPhones } from './services/whatsappService';
 import { getConversations, getClosedConversations, getMessages, getMessagesByClient, subscribeToConversations, subscribeToAllMessagesByPhone, subscribeToAllMediaUpdates, closeConversation, reopenConversation, markAsRead } from './services/messagesService';
@@ -52,7 +53,8 @@ import {
   Archive,
   RefreshCw,
   Gem,
-  Gavel
+  Gavel,
+  Vault
 } from 'lucide-react';
 
 const LoginScreen = ({ isDarkMode, toggleTheme }) => {
@@ -1316,12 +1318,19 @@ const App = () => {
                         </>
                       )}
                     </button>
-                    <button
+                    {/* <button
                       onClick={() => setCurrentView('auctions')}
                       className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
                       title="Subastas"
                     >
                       <Gavel size={16} /> <span className="hidden xl:inline">Subastas</span>
+                    </button> */}
+                    <button
+                      onClick={() => setCurrentView('assets')}
+                      className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
+                      title="Bóveda de Activos"
+                    >
+                      <Vault size={16} /> <span className="hidden xl:inline">Bóveda</span>
                     </button>
                     <button onClick={() => setCurrentView('settings')} className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}><Settings size={16} /></button>
                     {/* Profile Icon / Initials */}
@@ -1365,12 +1374,20 @@ const App = () => {
                       <Gem size={20} />
                     </button>
 
-                    <button
+                    {/* <button
                       onClick={() => setCurrentView('auctions')}
                       className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
                       title="Subastas"
                     >
                       <Gavel size={20} />
+                    </button> */}
+
+                    <button
+                      onClick={() => setCurrentView('assets')}
+                      className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-100'}`}
+                      title="Bóveda de Activos"
+                    >
+                      <Vault size={20} />
                     </button>
 
                     <button
@@ -1413,6 +1430,17 @@ const App = () => {
             ) : currentView === 'auctions' ? (
               <div className={`flex-1 h-screen overflow-y-auto ${isDarkMode ? 'bg-black' : 'bg-gray-100'} relative z-30`}>
                 <AuctionsView isDarkMode={isDarkMode} />
+                <button
+                  onClick={() => setCurrentView('main')}
+                  className={`fixed bottom-4 right-4 z-50 p-3 ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' : 'bg-white border-gray-200 text-slate-600 hover:bg-gray-50'} border rounded-full shadow-lg transition-all`}
+                  title="Volver a la App"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              </div>
+            ) : currentView === 'assets' ? (
+              <div className={`flex-1 h-screen overflow-y-auto ${isDarkMode ? 'bg-black' : 'bg-gray-100'} relative z-30`}>
+                <AssetVault isDarkMode={isDarkMode} />
                 <button
                   onClick={() => setCurrentView('main')}
                   className={`fixed bottom-4 right-4 z-50 p-3 ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' : 'bg-white border-gray-200 text-slate-600 hover:bg-gray-50'} border rounded-full shadow-lg transition-all`}
